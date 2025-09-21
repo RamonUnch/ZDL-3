@@ -15,74 +15,73 @@
 #include <windows.h>
 #include <stdio.h>
 #include <direct.h>
-#include <shlwapi.h>
 
+#define countof(x) ( sizeof(x)/sizeof(x[0]) )
  //////////////////////////
 // Max values
-#define MAX_ITEM 16
+#define MAX_ITEM 32
 #define MAX_PWAD 64
 #define MAX_NAME 48
 
  //////////////////////////
 // Strings
-#define STR_MAXPWAD "Too many files loaded! Not all files were added to the list."
-#define STR_NOITEMS "You must have at least 1 port and IWAD defined and available\n\nSelect ZDL -> Options to configure ports and IWADS"
-#define STR_NEEDPRT "This save specifies the port \"%s\" which is unavailable.\nDo you want to use \"%s\" instead?"
-#define STR_NEEDIWD "This save specifies the IWAD \"%s\" which is unavailable.\nDo you want to use \"%s\" instead?"
+#define STR_MAXPWAD TEXT("Too many files loaded! Not all files were added to the list.")
+#define STR_NOITEMS TEXT("You must have at least 1 port and IWAD defined and available\n\nSelect ZDL -> Options to configure ports and IWADS")
+#define STR_NEEDPRT TEXT("This save specifies the port \"%s\" which is unavailable.\nDo you want to use \"%s\" instead?")
+#define STR_NEEDIWD TEXT("This save specifies the IWAD \"%s\" which is unavailable.\nDo you want to use \"%s\" instead?")
 
  //////////////////////////
 // Data structs
 typedef struct{ // Options
 	char dlgmode;
-	char always[128];
 	char launch;
+	char autoclose;
+	char padd___;
+	TCHAR always[128];
 	// Internal
-	char *ini;
-	char assoc[4];
+	TCHAR ini[MAX_PATH];
+	char assoc[8];
 }CFG; extern CFG cfg;
 typedef struct{ // IWAD defs
 	char avail;
-	char name[MAX_NAME];
-	char path[MAX_PATH];
-}ITEM; extern ITEM *iwad[MAX_ITEM+1],*port[MAX_ITEM+1];
-extern char *pwad[MAX_PWAD+1];
+	TCHAR name[MAX_NAME];
+	TCHAR path[MAX_PATH];
+}ITEM;
+extern ITEM *iwad[MAX_ITEM+1],*port[MAX_ITEM+1];
+extern TCHAR *pwad[MAX_PWAD+1];
 extern short arg1,arg2,arg3; // Needed for the config dialogs
+extern TCHAR g_pgmptr[MAX_PATH];
+
+ //////////////////////////
+// zdl.c
+TCHAR *lstrchr(const TCHAR *str, const TCHAR c);
+TCHAR *lstrrchr(const TCHAR *str, const TCHAR c);
+TCHAR *GetFNinPath(const TCHAR *p);
 
  //////////////////////////
 // sub.c
-LRESULT CALLBACK AboutProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp);
-LRESULT CALLBACK AssocProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp);
-LRESULT CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp);
+INT_PTR CALLBACK AboutProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp);
+INT_PTR CALLBACK AssocProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp);
+INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp);
 
  //////////////////////////
 // cfg.c
-void RegisterFileType(char *ext,char *type,char *nicetype,char *exe,char* command,int icon);
+void RegisterFileType(TCHAR *ext,TCHAR *type,TCHAR *nicetype,TCHAR *exe,TCHAR* command,int icon);
 void Cfg_LoadConfig();
-int Cfg_ReadSave(HWND dlg,char *file);
-void Cfg_WriteSave(HWND dlg,FILE *fptr);
+int Cfg_ReadSave(HWND dlg, const TCHAR *file);
+void Cfg_WriteSave(HWND dlg, const TCHAR *fptr);
 int Cfg_GetSel(int sel,ITEM **item);
+DWORD mySHDeleteKey(HKEY hkey, LPCTSTR pszSubKey);
+#define SHDeleteKey mySHDeleteKey
 
  //////////////////////////
 // dlg.c
 void Dlg_Launch(HWND dlg,char prompt);
-int Dlg_AddPWAD(HWND dlg,char *file);
+int Dlg_AddPWAD(HWND dlg, const TCHAR *file);
 void Dlg_ClearPWAD(HWND dlg);
 void Dlg_ClearAll(HWND dlg);
 void Dlg_Quit(HWND dlg,char save);
-void Dlg_PopulateWarp(HWND dlg,char *file);
-
- //////////////////////////
-// From DoomDefs.h (by Bio)
-typedef struct{
-	BYTE type[4];	// Either "IWAD" or "PWAD"
-	DWORD lumps;	// Number of lumps in the dir
-	DWORD dir;		// the offset of the start of the dir
-}WADHEAD;
-typedef struct{
-	DWORD start;	// where the lump starts
-	DWORD length;	// how long the lump is
-	BYTE name[8];	// the lump's name (e.g. "MAP01")
-}LUMPHEAD;
+void Dlg_PopulateWarp(HWND dlg, TCHAR *file);
 
  //////////////////////////
 // zdl.rc
@@ -110,7 +109,7 @@ typedef struct{
 	#define LST_SKILL 1008
 	#define EDT_EXTRA 1009
 	// Buttons
-	#define BTN_EXIT 1010
+	//#define BTN_EXIT 1010
 	#define BTN_ZDL 1011
 	#define BTN_PANEL 1012
 	#define BTN_LAUNCH 1013
@@ -125,6 +124,7 @@ typedef struct{
 #define DLG_OPTIONS 101
 	//#define EDT_EXTRA // used in DLG_MAIN
 	#define CHK_LAUNCH 1020
+	#define CHK_AUTOCLOSE 1032
 	//#define BTN_ZDL // used in DLG_MAIN
 	//#define LST_PORT // used in DLG_MAIN
 	//#define BTN_UP // used in DLG_MAIN
@@ -136,7 +136,7 @@ typedef struct{
 	#define BTN_IDWN 1022
 	#define BTN_IADD 1023
 	#define BTN_IREM 1024
-	#define BTN_OK 1025
+	//#define BTN_OK 1025
 // File Dialog
 #define DLG_FILE 102
 	#define EDT_NAME 1026
@@ -149,6 +149,8 @@ typedef struct{
 	#define CHK_ZDL 1029
 	#define CHK_WAD 1030
 	#define CHK_DEH 1031
+	#define CHK_PK3 1032
+	#define CHK_ZIP 1033
 	//#define BTN_OK // used in DLG_OPTIONS
 // About Dialog
 #define DLG_ABOUT 104
@@ -163,3 +165,25 @@ typedef struct{
 	#define MNU_SAVE 2004
 	#define MNU_OPTIONS 2005
 	#define MNU_ABOUT 2006
+
+
+ //////////////////////////////////////////
+//
+#define calloc(x,y) HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, (x)*(y) )
+#define free(x) HeapFree( GetProcessHeap(), 0, (x) )
+#define exit(x) ExitProcess( x )
+#define FileExists(fn) (GetFileAttributes(fn) != 0xFFFFFFFF)
+
+ //////////////////////////////////////////
+//
+void lstrcpy_sA(char *__restrict__ d, size_t N, const char *src);
+void lstrcpy_sW(wchar_t *__restrict__ d, size_t N, const wchar_t *src);
+char *lstrcat_sA(char *__restrict__ d, const size_t N, const char *__restrict__ s);
+wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__restrict__ s);
+#ifdef UNICODE
+# define lstrcpy_s lstrcpy_sW
+# define lstrcat_s lstrcat_sW
+#else
+# define lstrcpy_s lstrcpy_sA
+# define lstrcat_s lstrcat_sA
+#endif
