@@ -46,38 +46,87 @@ wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__re
     return d;
 }
 
-// Global data
+/* Global data */
 CFG cfg={0};
 ITEM *iwad[MAX_ITEM+1]={0},*port[MAX_ITEM+1]={0};
 TCHAR *pwad[MAX_PWAD+1]={0};
 TCHAR *cmdline=NULL;
-short arg1=0,arg2=0,arg3=0; // Needed for the config dialogs
+short arg1=0,arg2=0,arg3=0; /* Needed for the config dialogs */
+
+static void OnDeleteItem(HWND dlg, int list_id)
+{
+    int i=0;
+    HWND ithwnd;
+    ITEM **item;
+
+    item = list_id == LST_PORT ? (port) : (iwad);
+    ithwnd = GetDlgItem(dlg, list_id);
+    if ((i=SendMessage(ithwnd,LB_GETCURSEL,0,0)) != LB_ERR) {
+        free(item[i]);
+        SendMessage(ithwnd, LB_DELETESTRING, i, 0);
+        SendMessage(ithwnd, LB_SETCURSEL, i, 0);
+        for( ; i < MAX_ITEM-1 && item[i]; i++)
+            item[i] = item[i+1];
+    }
+}
+
+static void OnMoveUpOrDown(HWND dlg, int list_id, BOOL up)
+{
+    int i=0;
+    HWND ithwnd;
+    ITEM *tmpi;
+    ITEM **item;
+
+    item = list_id == LST_PORT ? (port) : (iwad);
+    ithwnd = GetDlgItem(dlg, list_id);
+    if (up) {
+        /* MOVING UP! */
+        if((i=SendMessage(ithwnd, LB_GETCURSEL, 0, 0)) != LB_ERR && i!=0) {
+            /* Move the entry in the window */
+            SendMessage(ithwnd, LB_INSERTSTRING, i-1, (LPARAM)item[i]->name);
+            SendMessage(ithwnd, LB_DELETESTRING, i+1, 0);
+            SendMessage(ithwnd, LB_SETCURSEL,    i-1, 0);
+            /* Move the item */
+            tmpi=item[i-1]; item[i-1]=item[i]; item[i]=tmpi;
+        }
+    } else {
+        /* Moving down! */
+        if((i=SendMessage(ithwnd, LB_GETCURSEL, 0, 0)) != LB_ERR && i != SendMessage(ithwnd,LB_GETCOUNT,0,0)-1) {
+            /* Move the entry in the window */
+            SendMessage(ithwnd, LB_INSERTSTRING, i+2, (LPARAM)item[i]->name);
+            SendMessage(ithwnd, LB_DELETESTRING, i,   0);
+            SendMessage(ithwnd, LB_SETCURSEL,    i+1, 0);
+            /* Move the item */
+            tmpi=item[i+1]; item[i+1]=item[i]; item[i]=tmpi;
+        }
+    }
+}
 
 INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
 {
     int i=0, q=0;
     switch(msg) {
     case WM_INITDIALOG:{
-        // Set icons
+        /* Set icons */
         HMODULE hm = GetModuleHandle(NULL);
         SendDlgItemMessage(dlg,BTN_UP,  BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
         SendDlgItemMessage(dlg,BTN_DWN, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
         SendDlgItemMessage(dlg,BTN_IUP, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
         SendDlgItemMessage(dlg,BTN_IDWN,BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
 
-        // Set text limits
+        /* Set text limits */
         SendDlgItemMessage(dlg, EDT_EXTRA, EM_LIMITTEXT, countof(cfg.always), 0);
 
-        // Fill the dialog with info
+        /* Fill the dialog with info */
         SendDlgItemMessage(dlg, EDT_EXTRA,    WM_SETTEXT, 0, (LPARAM)cfg.always);
         SendDlgItemMessage(dlg, CHK_LAUNCH,   BM_SETCHECK, cfg.launch,   0);
         SendDlgItemMessage(dlg, CHK_AUTOCLOSE,BM_SETCHECK, cfg.autoclose,0);
 
-        // Fill Port and IWAD lists
+        /* Fill Port and IWAD lists */
         for (i=0; i<MAX_ITEM && port[i] && port[i]->name[0]; i++) {
             SendDlgItemMessage(dlg, LST_PORT, LB_ADDSTRING, 0, (LPARAM)port[i]->name);
         }
-        //SendDlgItemMessage(dlg, LST_IWAD, LB_ADDSTRING, 0, (LPARAM)TEXT("None"));
+        /*SendDlgItemMessage(dlg, LST_IWAD, LB_ADDSTRING, 0, (LPARAM)TEXT("None"));*/
         for (i=0; i<MAX_ITEM && iwad[i] && iwad[i]->name[0]; i++) {
             SendDlgItemMessage(dlg, LST_IWAD, LB_ADDSTRING, 0, (LPARAM)iwad[i]->name);
         }
@@ -93,14 +142,14 @@ INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
                 arg2 = i = (short)SendDlgItemMessage(dlg, LOWORD(wp), LB_GETCURSEL, 0, 0);
                 item = (LOWORD(wp)==LST_PORT)? (port): (iwad);
                 DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(DLG_FILE),dlg,FileProc);
-                // Update the string in the listbox
+                /* Update the string in the listbox */
                 ithwnd = GetDlgItem(dlg,q);
                 SendMessage(ithwnd, LB_DELETESTRING,i,0);
                 SendMessage(ithwnd, LB_INSERTSTRING,i,(LPARAM)item[i]->name);
                 SendMessage(ithwnd, LB_SETCURSEL,q,0);
-                // Update the file's availabillity
+                /* Update the file's availabillity */
                 item[i]->avail = FileExists(item[i]->path);
-                arg1=arg2=0; // Reset the temp vars
+                arg1=arg2=0; /* Reset the temp vars */
             }break;
         }break;
         case BN_CLICKED:
@@ -113,68 +162,34 @@ INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
                 HWND ithwnd;
                 ITEM **item = (LOWORD(wp)==BTN_ADD)? (port): (iwad);
                 arg1 = q = (LOWORD(wp)==BTN_ADD)? (LST_PORT): (LST_IWAD);
-                arg2 = -1; // -1 == BTN_ADD pressed
+                arg2 = -1; /* -1 == BTN_ADD pressed */
                 ithwnd = GetDlgItem(dlg,q);
                 arg3 = i = (short)SendMessage(ithwnd, LB_GETCOUNT, 0, 0);
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_FILE), dlg, FileProc);
-                // If a new entry was added, add it to the listbox
+                /* If a new entry was added, add it to the listbox */
                 if (item[i]) {
                     SendMessage(ithwnd, LB_ADDSTRING, 0, (LPARAM)item[i]->name);
                 }
-                arg1=arg2=arg3=0; // Reset the temp vars
+                arg1=arg2=arg3=0; /* Reset the temp vars */
             }break;
-            case BTN_REM:case BTN_IREM: { // Delete button
-                HWND ithwnd;
-                ITEM **item = (LOWORD(wp)==BTN_REM)?(port):(iwad);
-                q=(LOWORD(wp)==BTN_REM)?(LST_PORT):(LST_IWAD);
-                ithwnd = GetDlgItem(dlg,q);
-                if((i=SendMessage(ithwnd,LB_GETCURSEL,0,0))!=LB_ERR){
-                    free(item[i]);
-                    SendMessage(ithwnd,LB_DELETESTRING,i,0);
-                    SendMessage(ithwnd,LB_SETCURSEL,i,0);
-                    for( ; i<MAX_ITEM-1 && item[i]; i++)
-                        item[i] = item[i+1];
-                }
-            } break;
-            case BTN_UP:case BTN_IUP: { // Move up
-                HWND ithwnd;
-                ITEM *tmpi;
-                ITEM **item;
-                item=(LOWORD(wp)==BTN_UP)?(port):(iwad);
-                q=(LOWORD(wp)==BTN_UP)?(LST_PORT):(LST_IWAD);
-                ithwnd = GetDlgItem(dlg,q);
-                if((i=SendMessage(ithwnd, LB_GETCURSEL, 0, 0)) != LB_ERR && i!=0) {
-                    // Move the entry in the window
-                    SendMessage(ithwnd, LB_INSERTSTRING, i-1, (LPARAM)item[i]->name);
-                    SendMessage(ithwnd, LB_DELETESTRING, i+1, 0);
-                    SendMessage(ithwnd, LB_SETCURSEL,    i-1, 0);
-                    // Move the item
-                    tmpi=item[i-1];item[i-1]=item[i];item[i]=tmpi;
-                }
-            } break;
-            case BTN_DWN: case BTN_IDWN: { // Move down
-                HWND ithwnd;
-                ITEM *tmpi;
-                ITEM **item;
-                item = (LOWORD(wp) == BTN_DWN)? (port) : (iwad);
-                q = (LOWORD(wp)==BTN_DWN)? (LST_PORT): (LST_IWAD);
-                ithwnd = GetDlgItem(dlg, q);
-                if((i=SendMessage(ithwnd, LB_GETCURSEL, 0, 0)) != LB_ERR && i != SendMessage(ithwnd,LB_GETCOUNT,0,0)-1) {
-                    // Move the entry in the window
-                    SendMessage(ithwnd, LB_INSERTSTRING, i+2, (LPARAM)item[i]->name);
-                    SendMessage(ithwnd, LB_DELETESTRING, i,   0);
-                    SendMessage(ithwnd, LB_SETCURSEL,    i+1, 0);
-                    // Move the item
-                    tmpi=item[i+1]; item[i+1]=item[i]; item[i]=tmpi;
-                }
-            }break;
+            /* Delete button on PORT and IWAD lists */
+            case BTN_REM:  OnDeleteItem(dlg, LST_PORT); break;
+            case BTN_IREM: OnDeleteItem(dlg, LST_IWAD); break;
+
+
+            /* Up and down buttons for PORT and IWAD lists */
+            case BTN_UP:   OnMoveUpOrDown(dlg, LST_PORT, /*UP=*/ TRUE ); break;
+            case BTN_IUP:  OnMoveUpOrDown(dlg, LST_IWAD, /*UP=*/ TRUE ); break;
+            case BTN_DWN:  OnMoveUpOrDown(dlg, LST_PORT, /*UP=*/ FALSE); break;
+            case BTN_IDWN: OnMoveUpOrDown(dlg, LST_IWAD, /*UP=*/ FALSE); break;
+
             case IDOK:
                 SendDlgItemMessage(dlg, EDT_EXTRA, WM_GETTEXT, countof(cfg.always), (LPARAM)cfg.always);
                 cfg.launch = (char)SendDlgItemMessage(dlg, CHK_LAUNCH,   BM_GETCHECK, 0, 0);
                 cfg.autoclose=(char)SendDlgItemMessage(dlg,CHK_AUTOCLOSE,BM_GETCHECK, 0, 0);
             /* Fall through */
             case IDCANCEL:
-                EndDialog(dlg,0);
+                EndDialog(dlg, 0);
             break;
         }break;
     }break;
@@ -189,13 +204,27 @@ int SendMessageFNb(HWND ithwnd, UINT msg, WPARAM wp, const TCHAR *fn, char exist
     if (exists) {
         return SendMessage(ithwnd, msg, wp, (LPARAM)fn);
     } else {
-        // Prefix with a * if file is not found
+        /* Prefix with a * if file is not found */
         TCHAR buf[MAX_PATH+2];
         buf[0] = TEXT('*');
         lstrcpy_s(buf+1, countof(buf)-1, fn);
         return SendMessage(ithwnd, msg, wp, (LPARAM)buf);
     }
 
+}
+
+static void OnDeletePWAD(HWND dlg)
+{
+    int i=0;
+    HWND ithwnd = GetDlgItem(dlg,LST_PWAD);
+    if((i=SendMessage(ithwnd, LB_GETCURSEL, 0, 0))!=LB_ERR){
+        free(pwad[i]);
+        SendMessage(ithwnd, LB_DELETESTRING, i, 0);
+        SendMessage(ithwnd, LB_SETCURSEL, i, 0);
+        for( ; i < MAX_PWAD && pwad[i]; i++) {
+            pwad[i] = pwad[i+1];
+        }
+    }
 }
 
 INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
@@ -205,34 +234,37 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
 
     switch (msg) {
     case WM_INITDIALOG: {
-        // Set icons
+        /* Set icons */
         HWND ithwnd;
         HMODULE hm = GetModuleHandle(NULL);
-        SendMessage(dlg,WM_SETICON,ICON_SMALL,(LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_ICON)));
-        SendMessage(dlg,WM_SETICON,ICON_BIG,(LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_ICON)));
-        SendDlgItemMessage(dlg,BTN_UP, BM_SETIMAGE,IMAGE_ICON,(LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
-        SendDlgItemMessage(dlg,BTN_DWN,BM_SETIMAGE,IMAGE_ICON,(LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
+        SendMessage(dlg, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_ICON)));
+        SendMessage(dlg, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_ICON)));
+        SendDlgItemMessage(dlg, BTN_UP,  BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
+        SendDlgItemMessage(dlg, BTN_DWN, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
 
-        // Insert list data
-        { // SKILL
+        /* Insert list data */
+        { /* SKILL */
         static const TCHAR *skill_labels[5] = { TEXT("V. Easy"), TEXT("Easy"), TEXT("Normal"), TEXT("Hard") ,TEXT("V. Hard") };
         ithwnd = GetDlgItem(dlg,LST_SKILL);
-        for(i=0;i<5;i++){ SendMessage(ithwnd, CB_ADDSTRING, 0, (LPARAM)skill_labels[i]); }
+        for (i = 0; i < (int)countof(skill_labels); i++)
+            SendMessage(ithwnd, CB_ADDSTRING, 0, (LPARAM)skill_labels[i]);
         SendMessage(ithwnd, CB_SETCURSEL, 2, 0);
         }
-        { // Game mode
+        { /* Game mode */
         static const TCHAR *mode_labels[3] = { TEXT("Single-Player"), TEXT("Multi Co-operative"),TEXT("Multi DeathMatch") };
         ithwnd = GetDlgItem(dlg,LST_GAME);
-        for(i=0;i<3;i++){SendMessage(ithwnd, CB_ADDSTRING, 0, (LPARAM)mode_labels[i]);}
+        for (i = 0; i < (int)countof(mode_labels); i++)
+            SendMessage(ithwnd, CB_ADDSTRING, 0, (LPARAM)mode_labels[i]);
         SendMessage(ithwnd, CB_SETCURSEL, 0, 0);
         }
-        { // Number of Players
+        { /* Number of Players */
         static const TCHAR *nplay_labels[9] = { TEXT("Joining"),TEXT("1"),TEXT("2"),TEXT("3"),TEXT("4"),TEXT("5"),TEXT("6"),TEXT("7"),TEXT("8") };
-        ithwnd = GetDlgItem(dlg,LST_PLAYERS);
-        for(i=0;i<9;i++){SendMessage(ithwnd,CB_ADDSTRING,0,(LPARAM)nplay_labels[i]);}
-        SendMessage(ithwnd,CB_SETCURSEL,0,0);
+        ithwnd = GetDlgItem(dlg, LST_PLAYERS);
+        for (i = 0; i < (int)countof(nplay_labels) ; i++)
+            SendMessage(ithwnd, CB_ADDSTRING, 0, (LPARAM)nplay_labels[i]);
+        SendMessage(ithwnd, CB_SETCURSEL, 0, 0);
         }
-        // Set text limits
+        /* Set text limits */
         SendDlgItemMessage(dlg, LST_WARP, CB_LIMITTEXT, 8, 0);
         SendDlgItemMessage(dlg, EDT_EXTRA,EM_LIMITTEXT, 128, 0);
         SendDlgItemMessage(dlg, EDT_HOST, EM_LIMITTEXT, 21, 0);
@@ -240,71 +272,81 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         SendDlgItemMessage(dlg, EDT_DMF,  EM_LIMITTEXT, 8, 0);
         SendDlgItemMessage(dlg, EDT_DMF2, EM_LIMITTEXT, 8, 0);
 
-        // Fill the port and IWAD arrays
-        if((i=Cfg_GetSel(0,port))!=-1) {
+        /* Fill the port and IWAD arrays */
+        if ((i = Cfg_GetSel(0, port)) != -1) {
             ithwnd = GetDlgItem(dlg, LST_PORT);
-            for( ; i<MAX_ITEM && port[i]; i++) {
+            for ( ; i<MAX_ITEM && port[i]; i++) {
                 SendMessageFNb(ithwnd, CB_ADDSTRING, 0, port[i]->name, port[i]->avail);
             }
             SendMessage(ithwnd,CB_SETCURSEL,0,0);
         }
-        if ((i=Cfg_GetSel(0,iwad))!=-1) {
+        if ((i = Cfg_GetSel(0, iwad)) != -1) {
             ithwnd = GetDlgItem(dlg,LST_IWAD);
-            //SendMessageFNb(ithwnd,LB_ADDSTRING,0, TEXT("None"), 1);
+            /*SendMessageFNb(ithwnd,LB_ADDSTRING,0, TEXT("None"), 1);*/
             for( ; i<MAX_ITEM && iwad[i]; i++){
                 SendMessageFNb(ithwnd,LB_ADDSTRING,0, iwad[i]->name, iwad[i]->avail);
             }
             SendMessage(ithwnd, LB_SETCURSEL, 0, 0);
-            if ((i=Cfg_GetSel(0,iwad))!=-1 && i<MAX_ITEM && iwad[i]) {
+            if ((i = Cfg_GetSel(0,iwad)) != -1 && i < MAX_ITEM && iwad[i]) {
                 Dlg_PopulateWarp(dlg, iwad[i]->path);
             }
         }
 
-        // Load the last configuration
-        if(Cfg_GetSel(0,port)==-1||Cfg_GetSel(0,iwad)==-1){MessageBox(dlg,STR_NOITEMS,TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION);break;}
-        if(!cmdline || !cmdline[0]){Cfg_ReadSave(dlg,cfg.ini);break;}
+        /* Load the last configuration */
+        if (Cfg_GetSel(0, port) == -1 || Cfg_GetSel(0, iwad) == -1) {
+            MessageBox(dlg, STR_NOITEMS, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
+            break;
+        }
+        if (!cmdline || !cmdline[0]) {
+            Cfg_ReadSave(dlg, cfg.ini);
+            break;
+        }
 
-        // Process the command-line stuff
+        /* Process the command-line stuff */
         {
         TCHAR tmp[MAX_PATH];
-        for(i=SendDlgItemMessage(dlg,LST_PWAD,LB_GETCOUNT,0,0);cmdline[q];i++){
-            if(i>=MAX_PWAD){MessageBox(dlg,STR_MAXPWAD,TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION);break;}
-            for ( ;cmdline[q];q++) {
-                if (cmdline[q] == '\"'){ m=(m)? (0): (1); continue; }
-                if (r < MAX_PATH){ tmp[r]=cmdline[q]; r++; }
-                if (cmdline[q]==' ' && !m){ q++; break; }
+        for ( i = SendDlgItemMessage(dlg, LST_PWAD, LB_GETCOUNT, 0, 0); cmdline[q]; i++) {
+            if (i >= MAX_PWAD) {
+                MessageBox(dlg, STR_MAXPWAD, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
+                break;
             }
-            tmp[(cmdline[q])?(r-1):(r)]='\0';r=0;
-            // Check to see if it's a save file and act accordingly.
-            if(!Dlg_AddPWAD(dlg,tmp)){ // Check if it's a save file and launch
-                if(i==0&&lstrchr(tmp,'.')&&(!lstrcmpi(lstrchr(tmp,'.'),TEXT(".zdl"))||!lstrcmpi(lstrchr(tmp,'.'),TEXT(".ini")))){
-                    if(Cfg_ReadSave(dlg,tmp)){
-                        if(cfg.launch){ // Launch if the option is set
-                            Dlg_Launch(dlg,0);
-                            Dlg_Quit(dlg,0);
+            for ( ;cmdline[q]; q++) {
+                if (cmdline[q] == '\"') { m=(m)? (0): (1); continue; }
+                if (r < MAX_PATH){ tmp[r]=cmdline[q]; r++; }
+                if (cmdline[q]==' ' && !m) { q++; break; }
+            }
+            tmp[(cmdline[q])?(r-1):(r)] = '\0'; r = 0;
+            /* Check to see if it's a save file and act accordingly. */
+            if (!Dlg_AddPWAD(dlg, tmp)) { /* Check if it's a save file and launch */
+                if (i == 0&&lstrchr(tmp, '.')
+                && (!lstrcmpi(lstrchr(tmp,'.'), TEXT(".zdl")) || !lstrcmpi(lstrchr(tmp,'.'),TEXT(".ini")))) {
+                    if (Cfg_ReadSave(dlg, tmp)) {
+                        if (cfg.launch) { /* Launch if the option is set */
+                            Dlg_Launch(dlg, 0);
+                            Dlg_Quit(dlg, 0);
                         }
-                    }else{
-                        if(cfg.launch){Dlg_Quit(dlg,0);}
+                    } else {
+                        if (cfg.launch) { Dlg_Quit(dlg,0); }
                     }
-                }else{i--;}
+                } else { i--; }
             }
         }
         }
     }break;
 
     case WM_COMMAND:switch(HIWORD(wp)){
-        // File Info
+        /* File Info */
         case LBN_DBLCLK:switch(LOWORD(wp)){
             case LST_PWAD:MessageBox(dlg,pwad[SendDlgItemMessage(dlg,LST_PWAD,LB_GETCURSEL,0,0)],TEXT("File Info"),MB_OK|MB_ICONINFORMATION);break;
             case LST_IWAD:MessageBox(dlg,iwad[Cfg_GetSel(SendDlgItemMessage(dlg,LST_IWAD,LB_GETCURSEL,0,0),iwad)]->path,TEXT("File Info"),MB_OK|MB_ICONINFORMATION);break;
         }break;
-        // IWAD List
+        /* IWAD List */
         case LBN_SELCHANGE:
            if(LOWORD(wp)==LST_IWAD) {
                Dlg_PopulateWarp(dlg, iwad[Cfg_GetSel(SendDlgItemMessage(dlg, LST_IWAD, LB_GETCURSEL, 0, 0), iwad)]->path);
            }
         break;
-        // Buttons
+        /* Buttons */
         case BN_CLICKED:switch(LOWORD(wp)){
             case BTN_LAUNCH:Dlg_Launch(dlg,0);break;
             case MNU_CMD:Dlg_Launch(dlg,1);break;
@@ -313,7 +355,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 GetCursorPos(&pt);
                 TrackPopupMenu(GetSubMenu(LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(MNU_MENU)),0),TPM_LEFTALIGN,pt.x,pt.y,0,dlg,0);
             } break;
-            // Loading and Saving
+            /* Loading and Saving */
             case MNU_SAVE:case MNU_LOAD: {
                 TCHAR tmpfn[MAX_PATH];
                 OPENFILENAME ofn;
@@ -341,7 +383,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
             }break;
             case MNU_CLEAR:Dlg_ClearAll(dlg);break;
             case MNU_PWAD:Dlg_ClearPWAD(dlg);break;
-            // Open and close the multiplay panel
+            /* Open and close the multiplay panel */
               case BTN_PANEL:
                   rct.top=0;rct.left=0;rct.right=270;rct.bottom=(cfg.dlgmode)?(282):(210);
                   cfg.dlgmode=(cfg.dlgmode)?(0):(1);
@@ -362,12 +404,12 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 ofn.Flags=OFN_FILEMUSTEXIST|OFN_EXPLORER|OFN_ALLOWMULTISELECT;
                 ofn.lpstrTitle=TEXT("Load an External File");
                 ofn.lpstrDefExt=TEXT("wad");
-                // Get the file and set the editbox
+                /* Get the file and set the editbox */
                 ofn.lpstrFile = tmpfn;
                 ofn.nMaxFile  = MAX_PATH;
                 if(!GetOpenFileName(&ofn)){break;}
                 i=SendDlgItemMessage(dlg,LST_PWAD,LB_GETCOUNT,0,0);
-                if(!ofn.nFileExtension){ // Multiple files
+                if(!ofn.nFileExtension){ /* Multiple files */
                     TCHAR *tmp, tmp2[MAX_PATH*2];
                     memset(tmp2 ,0 , sizeof(tmp2));
                     tmp=ofn.lpstrFile+ofn.nFileOffset;
@@ -379,45 +421,36 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                     }
                 }else{Dlg_AddPWAD(dlg,ofn.lpstrFile);}
             }break;
-            case BTN_REM: // Delete button
-                if((i=SendDlgItemMessage(dlg,LST_PWAD,LB_GETCURSEL,0,0))!=LB_ERR){
-                    free(pwad[i]);
-                    SendDlgItemMessage(dlg,LST_PWAD,LB_DELETESTRING,i,0);
-                    SendDlgItemMessage(dlg,LST_PWAD,LB_SETCURSEL,i,0);
-                    for( ; i < MAX_PWAD && pwad[i]; i++){
-                        pwad[i] = pwad[i+1];
-                    }
-                }
-            break;
-            case BTN_UP: { // Move up
+            case BTN_REM: OnDeletePWAD(dlg); break;
+            case BTN_UP: { /* Move up */
                 HWND ithwnd = GetDlgItem(dlg,LST_PWAD);
                 if((i=SendMessage(ithwnd,LB_GETCURSEL,0,0))!=LB_ERR&&i!=0){
                     TCHAR *tmp;
-                    // Move the entry in the window
+                    /* Move the entry in the window */
                     SendMessage(ithwnd,LB_INSERTSTRING,i-1,(LPARAM)GetFNinPath(pwad[i]));
                     SendMessage(ithwnd,LB_DELETESTRING,i+1,0);
                     SendMessage(ithwnd,LB_SETCURSEL,i-1,0);
-                    // Move the item
+                    /* Move the item */
                     tmp=pwad[i-1]; pwad[i-1]=pwad[i]; pwad[i]=tmp;
                 }
             }break;
-            case BTN_DWN: { // Move down
+            case BTN_DWN: { /* Move down */
                 HWND ithwnd = GetDlgItem(dlg,LST_PWAD);
                 if((i=SendMessage(ithwnd, LB_GETCURSEL,0,0))!=LB_ERR&&i!=SendMessage(ithwnd, LB_GETCOUNT,0,0)-1){
                     TCHAR *tmp;
-                    // Move the entry in the window
+                    /* Move the entry in the window */
                     SendMessage(ithwnd, LB_INSERTSTRING,i+2,(LPARAM)GetFNinPath(pwad[i]));
                     SendMessage(ithwnd, LB_DELETESTRING,i,0);
                     SendMessage(ithwnd, LB_SETCURSEL,i+1,0);
-                    // Move the item
+                    /* Move the item */
                     tmp=pwad[i+1]; pwad[i+1]=pwad[i]; pwad[i]=tmp;
                 }
             }break;
-            // Menu Selections
+            /* Menu Selections */
             case MNU_OPTIONS: {
                 HWND ithwnd;
                 DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(DLG_OPTIONS),dlg,ConfigProc);
-                // Fill the port and IWAD arrays
+                /* Fill the port and IWAD arrays */
                 ithwnd = GetDlgItem(dlg, LST_PORT);
                 SendMessage(ithwnd, CB_RESETCONTENT, 0, 0);
                 for (i=0; i < MAX_ITEM && port[i]; i++){
@@ -439,7 +472,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
             }break;
             case MNU_ABOUT:
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ABOUT), dlg, AboutProc);break;
-            // Ways to exit
+            /* Ways to exit */
             case IDCANCEL:
                 SendMessage(dlg, WM_CLOSE,0,0); exit(0); break;
             case IDOK:
@@ -447,7 +480,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         }break;
     }break;
 
-    case WM_DROPFILES: { // Add files dropped onto the pwad box
+    case WM_DROPFILES: { /* Add files dropped onto the pwad box */
         TCHAR tmp2[MAX_PATH];
         r=DragQueryFile((HDROP)wp,0xFFFFFFFF,0,0);
         for(i=SendMessage(GetDlgItem(dlg,LST_PWAD),LB_GETCOUNT,0,0);q<r;i++) {
@@ -464,19 +497,22 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
     return 0;
 }
 
-int __getmainargs(long*,char***,char***, long, long*);
-int __wgetmainargs(long*,wchar_t***,wchar_t***, long, long*);
-
-//#ifdef _UNICODE
-//#define __tgetmainargs __wgetmainargs
-//#else
-//#define __tgetmainargs __getmainargs
-//#endif
-//int WINAPI WinMain(HINSTANCE inst,HINSTANCE pinst,LPSTR cline,int cshow)
-//int MyMain(void)
+/*
+#ifdef _UNICODE
+#define __tgetmainargs __wgetmainargs
+#else
+#define __tgetmainargs __getmainargs
+#endif
+int WINAPI WinMain(HINSTANCE inst,HINSTANCE pinst,LPSTR cline,int cshow)
+int MyMain(void)
+*/
 TCHAR g_pgmptr[MAX_PATH];
 
-// Does not return NULL if it was unable to find the char!
+/* Avoid linking with msvcrt */
+size_t __cdecl strlen(const char *str) { return lstrlenA(str); }
+size_t __cdecl wcslen(const wchar_t *str) { return lstrlenW(str); }
+
+/* Does not return NULL if it was unable to find the char! */
 TCHAR *lstrchr(const TCHAR *str, const TCHAR c)
 {
     while(*str != c) {
@@ -486,7 +522,7 @@ TCHAR *lstrchr(const TCHAR *str, const TCHAR c)
     return (TCHAR *)str;
 }
 
-// Does not return NULL if it was unable to find the char!
+/* Does not return NULL if it was unable to find the char! */
 TCHAR *lstrrchr(const TCHAR *str, const TCHAR c)
 {
     const TCHAR *ostr=str;
@@ -506,7 +542,7 @@ TCHAR *GetFNinPath(const TCHAR *p)
     i++;
     i += (p[i] == TEXT('\\') || p[i] == TEXT('/'));
 
-    return (TCHAR*)&p[i]; // first char of the filename
+    return (TCHAR*)&p[i]; /* first char of the filename */
 }
 
 static const TCHAR *ParamsFromCmdline(const TCHAR *cmdl)
@@ -538,21 +574,21 @@ int MyMain(void)
 
     inst = GetModuleHandle(NULL);
 
-    // Set up the INI string
+    /* Set up the INI string */
     GetModuleFileName(NULL, g_pgmptr, MAX_PATH);
     lstrcpy_s(cfg.ini, countof(cfg.ini), g_pgmptr);
-    lstrrchr(cfg.ini,'\\')[1] = '\0';
-    lstrcat_s(cfg.ini, countof(cfg.ini),TEXT("zdl.ini"));
+    lstrrchr(cfg.ini, TEXT('\\'))[1] = '\0';
+    lstrcat_s(cfg.ini, countof(cfg.ini), TEXT("zdl.ini"));
 
-    // We need the command line for the INI thingy later
+    /* We need the command line for the INI thingy later */
     cmdline = NULL;
     cmdl = GetCommandLine();
     if (cmdl) {
         cmdline = (TCHAR*)ParamsFromCmdline(cmdl);
     }
 
-    Cfg_LoadConfig(); // Load the configuration file
+    Cfg_LoadConfig(); /* Load the configuration file */
 
-    // GoooOOooooOOOOOoooOOO!
+    /* GoooOOooooOOOOOoooOOO! */
     return DialogBox(inst, MAKEINTRESOURCE(DLG_MAIN), HWND_DESKTOP, MainProc);
 }
