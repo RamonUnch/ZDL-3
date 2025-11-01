@@ -15,28 +15,28 @@
 #include "zdl.h"
 #define isDigit(x) ( '0' <= (x) && (x) <= '9' )
 #define isFileExt(x, Y) ( !lstrcmpi(lstrrchr((x), TEXT('.')), (Y)) )
- /////////////////////////////////////////////////
-// Dlg_Launch : The most important function in ZDL
+/* * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Dlg_Launch : The most important function in ZDL */
 void Dlg_Launch(HWND dlg, char prompt)
 {
-    // Max commend line length (q) = MAXPATH * (1(exe) + 1(IWAD) + NUM_PWAD + 1extra)
-    int q = MAX_PATH*(MAX_PWAD+4);
+    /* Max commend line length (q) = MAXPATH * (1(exe) + 1(IWAD) + NUM_PWAD + 1extra) */
+    size_t q = MAX_PATH*(MAX_PWAD+4), cmdlen;
     int i=0, pw=0, pt=0, pl=0;
     TCHAR *cmd, tmp[MAX_PATH], *portExe;
-    // Make sure there is a port selected
+    /* Make sure there is a port selected */
     if(!SendDlgItemMessage(dlg,LST_PORT,CB_GETCOUNT,0,0)||!SendDlgItemMessage(dlg,LST_IWAD,LB_GETCOUNT,0,0)){MessageBox(dlg,STR_NOITEMS,TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION);return;}
-    // Determine how long the cmd string has to be
+    /* Determine how long the cmd string has to be */
     for(i=0; i<MAX_PWAD && pwad[i]; i++)
-        q+=lstrlen(pwad[i])+4; // Count the length of the PWADs
+        q+=lstrlen(pwad[i])+4; /* Count the length of the PWADs */
 
-    // Alloc the commend line string (up to 18KB)
-    const size_t cmdlen = q;
+    /* Alloc the commend line string (up to 18KB) */
+    cmdlen = q;
     cmd = calloc(cmdlen, sizeof(TCHAR));
     if (!cmd) return;
     memset(tmp,0, sizeof(tmp));
     portExe = port[Cfg_GetSel(SendDlgItemMessage(dlg, LST_PORT, CB_GETCURSEL, 0, 0),port)]->path;
 
-    // Print the basic stuff
+    /* Print the basic stuff */
     {
     const TCHAR *iwadpath=iwad[Cfg_GetSel(SendDlgItemMessage(dlg,LST_IWAD, LB_GETCURSEL,0,0),iwad)]->path;
     if (iwadpath && *iwadpath)
@@ -52,10 +52,10 @@ void Dlg_Launch(HWND dlg, char prompt)
             , (lstrlen(cfg.always))? TEXT(" "): TEXT(""), cfg.always);
 
     }
-    // Warp and Skill
+    /* Warp and Skill */
     SendDlgItemMessage(dlg,LST_WARP,WM_GETTEXT,MAX_PATH,(LPARAM)tmp);
     if (tmp[0]) {
-        TCHAR mapnum[MAX_PATH], *p; // In case it is a simple map number
+        TCHAR mapnum[MAX_PATH], *p; /* In case it is a simple map number */
         int issimplenumber = 0;
         mapnum[0] = '\0';
         p = mapnum;
@@ -67,14 +67,14 @@ void Dlg_Launch(HWND dlg, char prompt)
         && isDigit(tmp[3])
         && isDigit(tmp[4])
         && !tmp[5] ) {
-            // "MAPXY" format
+            /* "MAPXY" format */
             p[0] = tmp[3];
             p[1] = tmp[4];
             p[2] = '\0';
             issimplenumber = 1;
         } else if( tmp[0] == 'E' && isDigit(tmp[1])
                && tmp[2] == 'M' && isDigit(tmp[3]) && !tmp[4] ) {
-            // EXMY format
+            /* EXMY format */
             p[0] = tmp[1];
             p[1] = ' ';
             p[2] = tmp[3];
@@ -82,39 +82,39 @@ void Dlg_Launch(HWND dlg, char prompt)
             issimplenumber = 1;
         } else {
             p = tmp;
-            // "XY" or 'X Y"
+            /* "XY" or 'X Y" */
             issimplenumber = ( isDigit(p[0]) && isDigit(p[1]) && !p[2] )
                           || ( isDigit(p[0]) && p[1] == TEXT(' ') && isDigit(p[2]) && !p[3] );
         }
 
-        // We use -warp XX if possible otherwise we use ZDoom's +map
+        /* We use -warp XX if possible otherwise we use ZDoom's +map */
         if(*p) {
             lstrcat_s(cmd, cmdlen, issimplenumber? TEXT(" -warp "): TEXT(" +map "));
             lstrcat_s(cmd, cmdlen, p);
         }
 
-        // Skill
+        /* Skill */
         wsprintf(
             &cmd[lstrlen(cmd)]
             , TEXT(" -skill %d"),(int)SendDlgItemMessage(dlg, LST_SKILL, CB_GETCURSEL,0,0)+1);
     }
 
-    // PWADs and DEHs
-    for (i=0; i < MAX_PWAD && pwad[i]; i++) { // Count up each type of file
+    /* PWADs and DEHs */
+    for (i=0; i < MAX_PWAD && pwad[i]; i++) { /* Count up each type of file */
         if(isFileExt(pwad[i], TEXT(".deh"))
         || isFileExt(pwad[i], TEXT(".bex"))) {
-            // DEH/BEX
+            /* DEH/BEX */
             pt++;
         } else if (isFileExt(pwad[i], TEXT(".lmp"))) {
-            // LMP (DEMO file)
+            /* LMP (DEMO file) */
             pl++;
         } else {
-            // Default to wad file.
+            /* Default to wad file. */
             pw++;
         }
     }
 
-    if (pt) { // Append DEHs
+    if (pt) { /* Append DEHs */
         lstrcat_s(cmd, cmdlen, TEXT(" -deh"));
         for(i=0; i<MAX_PWAD && pwad[i]; i++) {
             if(isFileExt(pwad[i], TEXT(".deh"))
@@ -123,7 +123,7 @@ void Dlg_Launch(HWND dlg, char prompt)
             }
         }
     }
-    if (pl == 1) { // Append DEMO file (if a single one)!
+    if (pl == 1) { /* Append DEMO file (if a single one)! */
         lstrcat_s(cmd, cmdlen, TEXT(" -playdemo"));
         for(i=0; i<MAX_PWAD && pwad[i]; i++) {
             if(isFileExt(pwad[i], TEXT(".lmp"))) {
@@ -131,7 +131,7 @@ void Dlg_Launch(HWND dlg, char prompt)
             }
         }
     }
-    if (pw) { // Append PWADs
+    if (pw) { /* Append PWADs */
         lstrcat_s(cmd, cmdlen, TEXT(" -file"));
         for(i=0; i<MAX_PWAD && pwad[i]; i++){
             if(!isFileExt(pwad[i], TEXT(".deh"))
@@ -142,35 +142,35 @@ void Dlg_Launch(HWND dlg, char prompt)
         }
     }
 
-    // Extra Args
+    /* Extra Args */
     if(SendDlgItemMessage(dlg, EDT_EXTRA,WM_GETTEXTLENGTH,0,0)){
         lstrcat_s(cmd, cmdlen, TEXT(" "));
         SendDlgItemMessage(dlg,EDT_EXTRA,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
     }
-    // Network stuff
+    /* Network stuff */
     if(SendDlgItemMessage(dlg,LST_GAME,CB_GETCURSEL,0,0)){
-        if((i=SendDlgItemMessage(dlg,LST_PLAYERS,CB_GETCURSEL,0,0))){ // Hosting
+        if((i=SendDlgItemMessage(dlg,LST_PLAYERS,CB_GETCURSEL,0,0))){ /* Hosting */
             wsprintf(&cmd[lstrlen(cmd)], TEXT(" -host %d"),i);
-            // Deathmatch Flag
+            /* Deathmatch Flag */
             if(SendDlgItemMessage(dlg,LST_GAME,CB_GETCURSEL,0,0)==2){
                 lstrcat_s(cmd, cmdlen, TEXT(" -deathmatch"));
-                // Fragimit
+                /* Fragimit */
                 if(SendDlgItemMessage(dlg,EDT_FRAGS,WM_GETTEXTLENGTH,0,0)){
                     lstrcat_s(cmd, cmdlen, TEXT(" +fraglimit "));
                     SendDlgItemMessage(dlg,EDT_FRAGS,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
                 }
             }
-            // DMF
+            /* DMF */
             if(SendDlgItemMessage(dlg,EDT_DMF,WM_GETTEXTLENGTH,0,0)){
                 lstrcat_s(cmd, cmdlen, TEXT(" +dmflags "));
                 SendDlgItemMessage(dlg,EDT_DMF,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
             }
-            // DMF2
+            /* DMF2 */
             if(SendDlgItemMessage(dlg,EDT_DMF2,WM_GETTEXTLENGTH,0,0)){
                 lstrcat_s(cmd, cmdlen, TEXT(" +dmflags2 "));
                 SendDlgItemMessage(dlg,EDT_DMF2,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
             }
-        }else{ // Joining
+        }else{ /* Joining */
             if(!SendDlgItemMessage(dlg,EDT_HOST,WM_GETTEXTLENGTH,0,0)) {
                 MessageBox(dlg, TEXT("You need to type a host to join"), TEXT("Error!"), MB_OK|MB_ICONHAND);
                 goto exit;
@@ -181,36 +181,36 @@ void Dlg_Launch(HWND dlg, char prompt)
     }
     if(prompt&&MessageBox(dlg,cmd,TEXT("Run this command-line?"),MB_YESNO|MB_DEFBUTTON2|MB_ICONQUESTION)==IDNO){goto exit;}
 
-    {// Change to the port directory
+    {/* Change to the port directory */
         TCHAR *end;
         lstrcpy_s(tmp, countof(tmp), portExe);
         end = lstrrchr(tmp, '\\');
         if (end) {
             *end = TEXT('\0');
-            // MessageBox(NULL,tmp,TEXT("Going in directory"), MB_OK);
+            /* MessageBox(NULL,tmp,TEXT("Going in directory"), MB_OK); */
             SetCurrentDirectory(tmp);
         }
     }
 
-    { // GoooOOooooOOOOOoooOOO!
+    { /* GoooOOooooOOOOOoooOOO! */
     STARTUPINFO lpStartupInfo;
     PROCESS_INFORMATION lpProcessInformation;
     memset(&lpProcessInformation, 0, sizeof(lpProcessInformation));
     memset(&lpStartupInfo, 0, sizeof(lpStartupInfo));
     lpStartupInfo.cb = sizeof(STARTUPINFO);
     CreateProcess(
-        NULL, // lpApplicationName
-        cmd,  // lpCommandLine
-        NULL, NULL, // lpProcessAttributes, lpThreadAttributes
-        FALSE, // bInheritHandles
-        0, // dwCreationFlags
-        NULL, // lpEnvironment
-        NULL, // lpCurrentDirectory
-        &lpStartupInfo, // lpStartupInfo
-        &lpProcessInformation// lpProcessInformation
+        NULL, /* lpApplicationName */
+        cmd,  /* lpCommandLine */
+        NULL, NULL, /* lpProcessAttributes, lpThreadAttributes */
+        FALSE, /* bInheritHandles */
+        0, /* dwCreationFlags */
+        NULL, /* lpEnvironment */
+        NULL, /* lpCurrentDirectory */
+        &lpStartupInfo, /* lpStartupInfo */
+        &lpProcessInformation /* lpProcessInformation */
     );
     }
-    // Quit on launch?
+    /* Quit on launch? */
     if (cfg.autoclose) {
         Dlg_Quit(dlg, 1);
     }
@@ -218,8 +218,8 @@ exit:
     free(cmd);
 }
 
- /////////////////////////////////////////////////
-// Dlg_AddPWAD : Adds an item to the PWAD list
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+ *  Dlg_AddPWAD : Adds an item to the PWAD list  */
 int Dlg_AddPWAD(HWND dlg, const TCHAR *file)
 {
     HWND ithwnd = GetDlgItem(dlg,LST_PWAD);
@@ -238,8 +238,9 @@ int Dlg_AddPWAD(HWND dlg, const TCHAR *file)
 
     return 1;
 }
- /////////////////////////////////////////////////
-// Dlg_ClearPWAD : Clears all the data from the PWAD list
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Dlg_ClearPWAD : Clears all the data from the PWAD list  */
 void Dlg_ClearPWAD(HWND dlg){
     int i=0;
     SendDlgItemMessage(dlg, LST_PWAD, LB_RESETCONTENT, 0, 0);
@@ -249,8 +250,8 @@ void Dlg_ClearPWAD(HWND dlg){
     }
 }
 
- /////////////////////////////////////////////////
-// Dlg_ClearAll : Clears all the data from the dialog
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Dlg_ClearAll : Clears all the data from the dialog  */
 void Dlg_ClearAll(HWND dlg)
 {
     int i=0;
@@ -258,26 +259,26 @@ void Dlg_ClearAll(HWND dlg)
     static const int boxE[5] = { EDT_EXTRA, EDT_HOST, EDT_FRAGS, EDT_DMF, EDT_DMF2 };
     Dlg_ClearPWAD(dlg);
     SendDlgItemMessage(dlg, LST_IWAD,  LB_SETCURSEL, 0, 0);
-    SendDlgItemMessage(dlg, LST_WARP,  WM_SETTEXT, 0, (LPARAM)TEXT("") ); // NONE
+    SendDlgItemMessage(dlg, LST_WARP,  WM_SETTEXT, 0, (LPARAM)TEXT("") ); /* NONE */
     SendDlgItemMessage(dlg, LST_SKILL, CB_SETCURSEL, 2, 0);
     for(i=0; i<3; i++){ SendDlgItemMessage(dlg, boxL[i], CB_SETCURSEL, 0, 0); }
     for(i=0; i<5; i++){ SendDlgItemMessage(dlg, boxE[i], WM_SETTEXT, 0, (LPARAM)TEXT("")); }
 }
 
- /////////////////////////////////////////////////
-// Dlg_Quit : Saves data and exits ZDL
+/* * * * * * * * * * * * * * * * * * * *
+ * Dlg_Quit : Saves data and exits ZDL */
 void Dlg_Quit(HWND dlg, char save)
 {
     int i=0;
     TCHAR tmp[64];
 
-    // Save the config
+    /* Save the config */
     if (save) {
         WritePrivateProfileString(TEXT("zdl.general"), TEXT("alwaysadd"), cfg.always, cfg.ini);
         WritePrivateProfileString(TEXT("zdl.general"), TEXT("zdllaunch"), cfg.launch? TEXT("1"): NULL, cfg.ini);
         WritePrivateProfileString(TEXT("zdl.general"), TEXT("autoclose"), cfg.autoclose? TEXT("1"): NULL, cfg.ini);
 
-        // Write ports
+        /* Write ports */
         for (i=0; i < MAX_ITEM; i++) {
             wsprintf(tmp, TEXT("p%dn"), i);
             WritePrivateProfileString(TEXT("zdl.ports"), tmp, port[i]? port[i]->name: NULL, cfg.ini);
@@ -285,7 +286,7 @@ void Dlg_Quit(HWND dlg, char save)
             wsprintf(tmp, TEXT("p%df"), i);
             WritePrivateProfileString(TEXT("zdl.ports"), tmp, port[i]? port[i]->path: NULL, cfg.ini);
         }
-        // Write IWADs
+        /* Write IWADs */
         for(i=1; i < MAX_ITEM; i++) {
             wsprintf(tmp, TEXT("i%dn"), i-1);
             WritePrivateProfileString(TEXT("zdl.iwads"), tmp, iwad[i]? iwad[i]->name: NULL, cfg.ini);
@@ -296,28 +297,28 @@ void Dlg_Quit(HWND dlg, char save)
 
         Cfg_WriteSave(dlg, cfg.ini);
     }
-    // Delete port and IWAD data
+    /* Delete port and IWAD data */
     for (i=0; i<MAX_ITEM && port[i]; i++){ free(port[i]); }
     for (i=0; i<MAX_ITEM && iwad[i]; i++){ free(iwad[i]); }
     Dlg_ClearPWAD(dlg);
     EndDialog(dlg,0);
 }
 
- /////////////////////////////////////////////////
-// PopulateWarp : Reads through the wad and finds valid maps
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * PopulateWarp : Reads through the wad and finds valid maps */
 void Dlg_PopulateWarp(HWND dlg, TCHAR *file)
 {
-     //////////////////////////
-    // From DoomDefs.h (by Bio)
+    /* * * * * *
+     * From DoomDefs.h (by Bio) */
     typedef struct {
-        char type[4];   // Either "IWAD" or "PWAD"
-        DWORD lumps;    // Number of lumps in the dir
-        DWORD dir;      // the offset of the start of the dir
+        char type[4];   /* Either "IWAD" or "PWAD" */
+        DWORD lumps;    /* Number of lumps in the dir */
+        DWORD dir;      /* the offset of the start of the dir */
     } WADHEAD;
     typedef struct {
-        DWORD start;    // where the lump starts
-        DWORD length;   // how long the lump is
-        char name[8];   // the lump's name (e.g. "MAP01")
+        DWORD start;    /* where the lump starts */
+        DWORD length;   /* how long the lump is */
+        char name[8];   /* the lump's name (e.g. "MAP01") */
     } LUMPHEAD;
 
 
@@ -333,9 +334,9 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file)
     ithwnd = GetDlgItem(dlg,LST_WARP);
 
     SendMessageA(ithwnd, CB_RESETCONTENT,0,0);
-    SendMessageA(ithwnd, CB_ADDSTRING, 0, (LPARAM)""); // NONE
+    SendMessageA(ithwnd, CB_ADDSTRING, 0, (LPARAM)""); /* NONE */
 
-    // MessageBox(NULL, file, TEXT("Read Map Names in:"), 0);
+    /* MessageBox(NULL, file, TEXT("Read Map Names in:"), 0); */
     if(!file || !FileExists(file))
         return;
 

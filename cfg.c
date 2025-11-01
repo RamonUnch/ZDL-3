@@ -14,23 +14,7 @@
 **********************************************************************/
 #include "zdl.h"
 
-  ///////////////////////////////////////////////////////////////////
- // ReadINI - Reads an INI value to a buffer from a given file
-//  Written by BioHazard on November 18th 2005 -- Version 1.3
-//// USAGE //////////////////////////////////////////////////////////
-// section : The INI section to start reading at (don't include []'s)
-// entry   : The entry to read to [out] (don't include the '=')
-// out     : Buffer to read the line at [entry] to
-// limit   : Size of [out] in chars (overflowing output is truncated)
-// ini     : Path to the file to be opened
-//// RETURN /////////////////////////////////////////////////////////
-// >=0 : Number of chars copied to [out]
-//  -1 : [ini] could not be opened for reading
-//  -2 : [section] could not be found
-//  -3 : [entry] could not be found under [section]
-//// REMARKS ////////////////////////////////////////////////////////
-// [entry] must not start with '['
-// <stdio.h> is required (and perhaps <string.h>)
+/* Simple ReadINI using Win32 GetPrivateProfileString() function */
 int ReadINI(const TCHAR *section, const TCHAR *entry, TCHAR *out, DWORD limit, const TCHAR *ini)
 {
     out[0] = TEXT('\0');
@@ -59,49 +43,61 @@ DWORD mySHDeleteKey(HKEY hkey, LPCTSTR  pszSubKey)
     return 0;
 }
 
-  ///////////////////////////////////////////////////////////////////
- // RegisterFileType - Registers a filetype with Windows
-//  Written by BioHazard on November 30th 2005 -- Version 1.0
-//// USAGE //////////////////////////////////////////////////////////
-// ext      : The extension to register
-// type     : The data type to associate with
-// nicetype : Description of the data type
-// exe      : Executable to run the files with
-// command  : command line to stick after [exe]
-// icon     : 0-based index of icon in [exe] to be uesd for files
-//// REMARKS ////////////////////////////////////////////////////////
-// Testen to work in WinXP-Pro and Win2000
-void RegisterFileType(TCHAR *ext, TCHAR *type,TCHAR *nicetype,TCHAR *exe,TCHAR* command,int icon)
+/*****************************************************************
+** RegisterFileType - Registers a filetype with Windows
+  - Written by BioHazard on November 30th 2005 -- Version 1.0
+ * USAGE
+ * ext      : The extension to register
+ * type     : The data type to associate with
+ * nicetype : Description of the data type
+ * exe      : Executable to run the files with
+ * command  : command line to stick after [exe]
+ * icon     : 0-based index of icon in [exe] to be uesd for files
+** REMARKS **************************************************
+ * Testen to work in WinXP-Pro and Win2000 */
+void RegisterFileType(
+    const TCHAR *ext,
+    const TCHAR *type,
+    const TCHAR *nicetype,
+    const TCHAR *exe,
+    const TCHAR *command,
+    int icon)
 {
-    int i;
+    size_t i;
     TCHAR *tmp,*tmp2;
 
     i = lstrlen(command) + lstrlen(exe) + MAX_PATH;
     tmp = calloc(i, sizeof(TCHAR));
     tmp2 = calloc(i, sizeof(TCHAR));
+    if (!tmp || !tmp2) goto fail;
 
-    // Delete the old extensions
-    wsprintf(tmp,TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\%s"),ext);
+    /* Delete the old extensions */
+    wsprintf(tmp, TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\%s"), ext);
     SHDeleteKey(HKEY_CURRENT_USER, tmp);
     SHDeleteKey(HKEY_CLASSES_ROOT, ext);
     SHDeleteKey(HKEY_CLASSES_ROOT, type);
 
-    // Add new keys
+    /* Add new keys */
     RegSetValue(HKEY_CLASSES_ROOT, ext, REG_SZ, type, lstrlen(type));
     RegSetValue(HKEY_CLASSES_ROOT, type,REG_SZ, nicetype, lstrlen(nicetype));
+
+    /* DEFAULT ICON exename.exe,X */
     wsprintf(tmp,  TEXT("%s\\DefaultIcon"), type);
-    wsprintf(tmp2, TEXT("%s,%d"), g_pgmptr, icon);
-    RegSetValue(HKEY_CLASSES_ROOT,tmp,REG_SZ,tmp2,lstrlen(tmp2));
+    wsprintf(tmp2, TEXT("%s,%d"), exe, icon);
+    RegSetValue(HKEY_CLASSES_ROOT, tmp, REG_SZ, tmp2, lstrlen(tmp2));
+
     wsprintf(tmp, TEXT("%s\\shell\\open\\command"), type);
     wsprintf(tmp2, TEXT("\"%s\" %s"), exe, command);
-    RegSetValue(HKEY_CLASSES_ROOT,tmp,REG_SZ,tmp2,lstrlen(tmp2));
+    RegSetValue(HKEY_CLASSES_ROOT, tmp, REG_SZ, tmp2, lstrlen(tmp2));
 
-    // Free crap
-    free(tmp);free(tmp2);
+    /* Free crap */
+    fail:
+    free(tmp);
+    free(tmp2);
 }
 
- /////////////////////////////////////////////////
-// Cfg_LoadConfig : Loads data from the INI file
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+ * Cfg_LoadConfig : Loads data from the INI file */
 void Cfg_LoadConfig()
 {
     int i=0;
@@ -113,7 +109,7 @@ void Cfg_LoadConfig()
     ReadINI(TEXT("zdl.general"), TEXT("autoclose"), tmp, sizeof(tmp), cfg.ini);
     cfg.autoclose = tmp[0]=='1';
 
-    // Load ports
+    /* Load ports */
     for (i=0; i<MAX_ITEM; i++) {
         port[i] = calloc(sizeof(ITEM), 1);
         wsprintf(tmp, TEXT("p%dn"),i);
@@ -125,12 +121,12 @@ void Cfg_LoadConfig()
 
         port[i]->avail = FileExists(port[i]->path);
     }
-    // Load IWADs
+    /* Load IWADs */
     iwad[0] = calloc(sizeof(ITEM), 1);
     lstrcpy_s(iwad[0]->name, MAX_NAME, TEXT("None/Auto"));
-    //lstrcpy_s(iwad[0]->path, MAX_PATH, TEXT(""));
+    /*lstrcpy_s(iwad[0]->path, MAX_PATH, TEXT(""));*/
     iwad[0]->avail = 1;
-    
+
     for (i=1; i<MAX_ITEM; i++) {
         iwad[i] = calloc(sizeof(ITEM), 1);
         wsprintf(tmp, TEXT("i%dn"),i-1);
@@ -140,24 +136,24 @@ void Cfg_LoadConfig()
         if(!ReadINI(TEXT("zdl.iwads"),tmp, iwad[i]->path, MAX_PATH, cfg.ini))
             {free(iwad[i]);iwad[i]=0;break;}
 
-        // MessageBox(NULL, iwad[i]->path, NULL, 0);
+        /* MessageBox(NULL, iwad[i]->path, NULL, 0); */
         iwad[i]->avail = FileExists(iwad[i]->path);
     }
 }
 
- /////////////////////////////////////////
-// Cfg_GetSel : Gets the Port/IWAD index
+/* * * * * * * * * * * * * * * * * * * * *
+ * Cfg_GetSel : Gets the Port/IWAD index */
 int Cfg_GetSel(int sel, ITEM **item)
 {
     return 0<= sel && sel < MAX_ITEM? sel: 0;
 }
 
- /////////////////////////////////////////////////
-// Cfg_GetSelStr : Gets a selection index from a name
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Cfg_GetSelStr : Gets a selection index from a name  */
 int Cfg_GetSelStr(TCHAR *name,ITEM **item)
 {
     int i=0;
-    for (i=0; i<MAX_ITEM && item[i]; i++) { // Get to the real index
+    for (i=0; i<MAX_ITEM && item[i]; i++) { /* Get to the real index */
         if (!lstrcmpi(name, item[i]->name))
             return i;
     }
@@ -181,8 +177,8 @@ static int lstr2int(const TCHAR *s)
     }
     return sign*v;
 }
- /////////////////////////////////////////////////
-// Cfg_ReadSave : Reads a save file and applies it's settings
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Cfg_ReadSave : Reads a save file and applies it's settings  */
 int Cfg_ReadSave(HWND dlg, const TCHAR *file)
 {
     int i=0,q=0;
@@ -193,20 +189,20 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
     static const int boxidLST[3] = { LST_SKILL,LST_GAME,LST_PLAYERS };
     static const TCHAR *boxLST[3] = { TEXT("skill"), TEXT("gametype"), TEXT("players") };
 
-//    if(Cfg_GetSel(0, port)== -1  || Cfg_GetSel(0,iwad) == -1){
-//        MessageBox(dlg, STR_NOITEMS, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
-//        return 0;
-//    }
-
+/*    if(Cfg_GetSel(0, port)== -1  || Cfg_GetSel(0,iwad) == -1){
+        MessageBox(dlg, STR_NOITEMS, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
+        return 0;
+    }
+*/
     memset(tmp, 0, sizeof(tmp));
     memset(tmp2, 0, sizeof(tmp2));
-// Try to find [zdl.save] to see if this is a save file
+/* Try to find [zdl.save] to see if this is a save file */
     if(ReadINI(TEXT("zdl.save"),TEXT("keyb"),tmp,MAX_PATH,file)==-2){
         MessageBox(dlg,TEXT("This save file is an invalid format."),TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION);
         i=0;goto exit;
     }
-// Start reading the saved data
-    // Port
+/* Start reading the saved data */
+    /* Port */
     if (ReadINI(TEXT("zdl.save"),TEXT("port"),tmp,MAX_PATH,file)) {
         if (!port[0] || (i=Cfg_GetSelStr(tmp,port))<0) {
             wsprintf(tmp2, STR_NEEDPRT,tmp,port[Cfg_GetSel(0,port)]->name);
@@ -214,7 +210,7 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
             i=0;
         }
     }
-    // Iwad
+    /* Iwad */
     if (ReadINI(TEXT("zdl.save"),TEXT("iwad"),tmp,MAX_PATH,file)) {
         if (!iwad[0] || (q=Cfg_GetSelStr(tmp,iwad))<0) {
             wsprintf(tmp2, STR_NEEDIWD,tmp,iwad[Cfg_GetSel(0,iwad)]->name);
@@ -227,24 +223,24 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
     SendDlgItemMessage(dlg, LST_IWAD, LB_SETCURSEL, q, 0);
     Dlg_PopulateWarp(dlg,iwad[Cfg_GetSel(q,iwad)]->path);
 
-    // EditBoxes (Warp, Extra, Host, Frags, DMF, DMF2)
+    /* EditBoxes (Warp, Extra, Host, Frags, DMF, DMF2) */
     for(i=0; i < 6; i++) {
         if(ReadINI(TEXT("zdl.save"), boxEDT[i], tmp, MAX_PATH, file)>0) {
             SendDlgItemMessage(dlg, boxidEDT[i], WM_SETTEXT,0,(LPARAM)tmp);
         }
     }
-    // ComboBoxes (Skill, GameType, Players)
+    /* ComboBoxes (Skill, GameType, Players) */
     for(i=0; i < 3; i++) {
         if(ReadINI(TEXT("zdl.save"), boxLST[i], tmp, MAX_PATH, file) > 0) {
             SendDlgItemMessage(dlg, boxidLST[i], CB_SETCURSEL, (WPARAM)lstr2int(tmp), 0);
         }
     }
-    // Dialog Mode
+    /* Dialog Mode */
     if (ReadINI(TEXT("zdl.save"), TEXT("dlgmode"), tmp, MAX_PATH, file) > 0
     && !lstrcmpi(tmp,TEXT("open")) && cfg.dlgmode) {
         SendMessage(dlg, WM_COMMAND, MAKELONG(BTN_PANEL, BN_CLICKED), 0);
     }
-    // PWAD list
+    /* PWAD list */
     for(i=0; i < MAX_PWAD ;i++) {
         wsprintf(tmp2, TEXT("file%d"), i);
         if (ReadINI(TEXT("zdl.save"),tmp2,tmp, MAX_PATH,file)>0) {
@@ -259,16 +255,16 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
         q++;
    }
    i=1;
-exit: // Free crap and exit
+exit: /* Free crap and exit */
 
     return i;
 }
 
- /////////////////////////////////////////////////
-// Cfg_WriteSave : Writes dialog data to the file given
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Cfg_WriteSave : Writes dialog data to the file given  */
 void Cfg_WriteSave(HWND dlg, const TCHAR *inipath)
 {
-    // Used for the box grabber
+    /* Used for the box grabber */
     static const int boxid[] = { EDT_EXTRA, EDT_HOST, EDT_FRAGS, EDT_DMF, EDT_DMF2 };
     static const TCHAR *box[] = {
         TEXT("extra"),
@@ -282,7 +278,7 @@ void Cfg_WriteSave(HWND dlg, const TCHAR *inipath)
     TCHAR tmp[MAX_PATH];
     tmp[0] = TEXT('\0');
 
-// Standard stuff
+/* Standard stuff */
     if ((i=SendDlgItemMessage(dlg, LST_PORT, CB_GETCURSEL,0,0)) != LB_ERR) {
         WritePrivateProfileString(TEXT("zdl.save"), TEXT("port"), port[Cfg_GetSel(i,port)]->name, inipath);
     }
@@ -307,13 +303,13 @@ void Cfg_WriteSave(HWND dlg, const TCHAR *inipath)
         wsprintf(tmp, TEXT("%d"), i);
         WritePrivateProfileString(TEXT("zdl.save"), TEXT("players"), tmp, inipath);
     }
-    for (i=0; i < 5; i++) { // Grab text from the boxes
+    for (i=0; i < 5; i++) { /* Grab text from the boxes */
         HWND ithwnd = GetDlgItem(dlg, boxid[i]);
         tmp[0] = TEXT('\0');
         SendMessage(ithwnd, WM_GETTEXT, MAX_PATH, (LPARAM)tmp);
         WritePrivateProfileString(TEXT("zdl.save"), box[i], tmp, inipath);
     }
-// PWADs
+/* PWADs */
     for (i=0; i < MAX_PWAD; i++) {
         wsprintf(tmp, TEXT("file%d"), i);
         WritePrivateProfileString(TEXT("zdl.save"), tmp, pwad[i], inipath);
