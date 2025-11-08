@@ -21,6 +21,45 @@
 	* None that I know of but I'm sure there are a few.
 
 /////////////////////////////////////////////////////////////
+!-- Version 3.2 by RamonUnch (November 8 2025) --!
+	* Added: Full UNICODE support on Windows NT/2000/XP/Vista/7/8.x/10/11
+		you can still use zdla.exe for Win9x/ME (ANSI Mode).
+	* Added: 64bit unicode build (recomended for 64 bit windows).
+	* Added: Support for .lmp file, the demo will be played back
+		with -playdemo xxx.lmp if there is a signle lmp file.
+	* Added: Auto/None IWAD selection to not add the -iwad parameter
+		(used for demo playback in dsda-doom).
+	* Added: Skill 6 and empty skill option.
+	* Fixed: Removed dependency to msvcrt.dll
+	* Fixed: Removed excessive use of malloc/free and use the stack instead.
+	* Fixed: If possible, use the -map xx arguments instead of
+		ZDoom's specific +map command line option.
+
+!-- Version 3.1a by Wildgoose --!
+	ZDL 3.1a is based on ZDL 3.1 by Risen.
+	It contains the following bug fixes and new features:
+
+	* Added : Bundled msvcr80.dll (vc2005 sp1) and manifest file.
+		Therefore no longer requires the user to install
+		"Microsoft Visual C++ 2005 Redistributable Package (x86)"
+	* Fixed : Properly switch to source port exe directory before
+		launch. This will use the .ini from the source port directory
+		instead of creating new ones in zdl directory.
+	* Fixed : Removed the unnecessary 12mb zdl.ncb file from source distro.
+		This is a VS index file. Source is now 35k instead of 3.7mb
+
+!-- Version 3.1 by Risen --!
+	ZDL 3.1 is an iteration on BioHazard's original ZDL.
+	This version contains some bug fixes and a few new features:
+
+	* Added : Default file filter now includes PK3
+	* Added : Keyboard support
+	* Added : Option to close on launch
+	* Added : Option to associate PK3
+	* Added : Option to associate ZIP (if you really want to...)
+	* Fixed : If something other than the first IWAD in the list was
+		selected on close, PWADs would be dropped from the list on startup.
+		Fixed : Could not start on a map named "NONE"
 
 !-- Version 3.0d --!
 	*-- Dec 10th 2005 --*
