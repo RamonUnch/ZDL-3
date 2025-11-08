@@ -55,6 +55,7 @@ extern TCHAR g_pgmptr[MAX_PATH];
 TCHAR *lstrchr(const TCHAR *str, const TCHAR c);
 TCHAR *lstrrchr(const TCHAR *str, const TCHAR c);
 TCHAR *GetFNinPath(const TCHAR *p);
+BOOL GetOpenFileNameCompat(OPENFILENAME *ofn);
 
 /* * * * * * * * * * * * * * * * * * * * *
  * sub.c                                 */
