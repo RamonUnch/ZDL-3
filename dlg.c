@@ -94,9 +94,11 @@ void Dlg_Launch(HWND dlg, char prompt)
         }
 
         /* Skill */
-        wsprintf(
-            &cmd[lstrlen(cmd)]
-            , TEXT(" -skill %d"),(int)SendDlgItemMessage(dlg, LST_SKILL, CB_GETCURSEL,0,0)+1);
+        {
+        int skill = (int)SendDlgItemMessage(dlg, LST_SKILL, CB_GETCURSEL,0,0);
+        if(skill >0)
+            wsprintf(&cmd[lstrlen(cmd)] , TEXT(" -skill %d"), skill);
+        }
     }
 
     /* PWADs and DEHs */
@@ -260,7 +262,7 @@ void Dlg_ClearAll(HWND dlg)
     Dlg_ClearPWAD(dlg);
     SendDlgItemMessage(dlg, LST_IWAD,  LB_SETCURSEL, 0, 0);
     SendDlgItemMessage(dlg, LST_WARP,  WM_SETTEXT, 0, (LPARAM)TEXT("") ); /* NONE */
-    SendDlgItemMessage(dlg, LST_SKILL, CB_SETCURSEL, 2, 0);
+    SendDlgItemMessage(dlg, LST_SKILL, CB_SETCURSEL, 0, 0);
     for(i=0; i<3; i++){ SendDlgItemMessage(dlg, boxL[i], CB_SETCURSEL, 0, 0); }
     for(i=0; i<5; i++){ SendDlgItemMessage(dlg, boxE[i], WM_SETTEXT, 0, (LPARAM)TEXT("")); }
 }

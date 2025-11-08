@@ -269,11 +269,11 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
 
         /* Insert list data */
         { /* SKILL */
-        static const TCHAR *skill_labels[5] = { TEXT("V. Easy"), TEXT("Easy"), TEXT("Normal"), TEXT("Hard") ,TEXT("V. Hard") };
+        static const TCHAR *skill_labels[7] = { TEXT(""), TEXT("V. Easy"), TEXT("Easy"), TEXT("Normal"), TEXT("Hard") ,TEXT("V. Hard"), TEXT("Skill 6")  };
         ithwnd = GetDlgItem(dlg,LST_SKILL);
         for (i = 0; i < (int)countof(skill_labels); i++)
             SendMessage(ithwnd, CB_ADDSTRING, 0, (LPARAM)skill_labels[i]);
-        SendMessage(ithwnd, CB_SETCURSEL, 2, 0);
+        SendMessage(ithwnd, CB_SETCURSEL, 0, 0);
         }
         { /* Game mode */
         static const TCHAR *mode_labels[3] = { TEXT("Single-Player"), TEXT("Multi Co-operative"),TEXT("Multi DeathMatch") };
