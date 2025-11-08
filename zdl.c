@@ -46,6 +46,31 @@ wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__re
     return d;
 }
 
+BOOL GetOpenFileNameCompat(OPENFILENAME *ofn)
+{
+    BOOL ret;
+    ret = GetOpenFileName(ofn);
+#ifndef _WIN64
+    if (!ret && CommDlgExtendedError() == CDERR_STRUCTSIZE) {
+        ofn->lStructSize = 19 * 4; /* Old Win9x / NT4 size */
+        ret = GetOpenFileName(ofn);
+    }
+#endif
+    return ret;
+}
+BOOL GetSaveFileNameCompat(OPENFILENAME *ofn)
+{
+    BOOL ret;
+    ret = GetSaveFileName(ofn);
+#ifndef _WIN64
+    if (!ret && CommDlgExtendedError() == CDERR_STRUCTSIZE) {
+        ofn->lStructSize = 19 * 4; /* Old Win9x / NT4 size */
+        ret = GetSaveFileName(ofn);
+    }
+#endif
+    return ret;
+}
+
 /* Global data */
 CFG cfg={0};
 ITEM *iwad[MAX_ITEM+1]={0},*port[MAX_ITEM+1]={0};
@@ -376,7 +401,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                         Cfg_WriteSave(dlg, ofn.lpstrFile);
                     }
                 } else {
-                    if (GetOpenFileName(&ofn)) {
+                    if (GetOpenFileNameCompat(&ofn)) {
                         Cfg_ReadSave(dlg, ofn.lpstrFile);
                     }
                 }
@@ -407,7 +432,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 /* Get the file and set the editbox */
                 ofn.lpstrFile = tmpfn;
                 ofn.nMaxFile  = MAX_PATH;
-                if(!GetOpenFileName(&ofn)){break;}
+                if(!GetOpenFileNameCompat(&ofn)){break;}
                 i=SendDlgItemMessage(dlg,LST_PWAD,LB_GETCOUNT,0,0);
                 if(!ofn.nFileExtension){ /* Multiple files */
                     TCHAR *tmp, tmp2[MAX_PATH*2];

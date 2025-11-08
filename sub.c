@@ -14,30 +14,40 @@
 **********************************************************************/
 #include "zdl.h"
 
-INT_PTR CALLBACK AboutProc(HWND Dlg,UINT Msg,WPARAM wp,LPARAM lp){if(Msg==WM_COMMAND&&LOWORD(wp)==IDOK){EndDialog(Dlg,0);}return 0;}
+INT_PTR CALLBACK AboutProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
+{
+    if (msg == WM_COMMAND && LOWORD(wp)==IDOK) {
+        EndDialog(dlg, 0);
+    }
+    return 0;
+}
 
-INT_PTR CALLBACK AssocProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp){
-    long sz=32;
-    TCHAR tmp[64]={0};
-
+INT_PTR CALLBACK AssocProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp){
     switch (msg) {
-    case WM_INITDIALOG:
+    case WM_INITDIALOG: {
+        LONG sz;
+        TCHAR tmp[64];
         /* Check all already associated stuff. */
-        if(RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.SaveFile"), tmp, &sz)==ERROR_SUCCESS && tmp[0])
-            {SendDlgItemMessage(dlg, CHK_ZDL, BM_SETCHECK,1,0);cfg.assoc[0]=1; } sz=MAX_PATH;
-        if(RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.WADFile"),  tmp, &sz)==ERROR_SUCCESS && tmp[0])
-            {SendDlgItemMessage(dlg, CHK_WAD, BM_SETCHECK,1,0);cfg.assoc[1]=1;}sz=MAX_PATH;
-        if(RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.PK3File"),  tmp, &sz)==ERROR_SUCCESS && tmp[0])
-            {SendDlgItemMessage(dlg, CHK_PK3, BM_SETCHECK,1,0);cfg.assoc[3]=1;}sz=MAX_PATH;
-        if(RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.ZipFile"),  tmp, &sz)==ERROR_SUCCESS && tmp[0])
-            {SendDlgItemMessage(dlg, CHK_ZIP, BM_SETCHECK,1,0);cfg.assoc[4]=1;}sz=MAX_PATH;
-        if(RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.PatchFile"),tmp, &sz)==ERROR_SUCCESS && tmp[0])
-            {SendDlgItemMessage(dlg, CHK_DEH, BM_SETCHECK,1,0);cfg.assoc[2]=1;}sz=MAX_PATH;
-        break;
-    case WM_COMMAND:
-        switch(HIWORD(wp)) {
+        sz = countof(tmp); tmp[0] = TEXT('\0');
+        if (RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.SaveFile"), tmp, &sz) == ERROR_SUCCESS && tmp[0])
+            { SendDlgItemMessage(dlg, CHK_ZDL, BM_SETCHECK,1,0); cfg.assoc[0]=1; }
+        sz = countof(tmp); tmp[0] = TEXT('\0');
+        if (RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.WADFile"),  tmp, &sz) == ERROR_SUCCESS && tmp[0])
+            { SendDlgItemMessage(dlg, CHK_WAD, BM_SETCHECK,1,0); cfg.assoc[1]=1; }
+        sz = countof(tmp); tmp[0] = TEXT('\0');
+        if (RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.PK3File"),  tmp, &sz) == ERROR_SUCCESS && tmp[0])
+            { SendDlgItemMessage(dlg, CHK_PK3, BM_SETCHECK,1,0); cfg.assoc[3]=1; }
+        sz = countof(tmp); tmp[0] = TEXT('\0');
+        if (RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.ZipFile"),  tmp, &sz) == ERROR_SUCCESS && tmp[0])
+            { SendDlgItemMessage(dlg, CHK_ZIP, BM_SETCHECK,1,0); cfg.assoc[4]=1; }
+        sz = countof(tmp); tmp[0] = TEXT('\0');
+        if (RegQueryValue(HKEY_CLASSES_ROOT, TEXT("ZDL.PatchFile"),tmp, &sz) == ERROR_SUCCESS && tmp[0])
+            { SendDlgItemMessage(dlg, CHK_DEH, BM_SETCHECK,1,0); cfg.assoc[2]=1; }
+        }break;
+
+    case WM_COMMAND: switch(HIWORD(wp)) {
         case BN_CLICKED:
-            if(LOWORD(wp)==IDOK){
+            if (LOWORD(wp) == IDOK) {
                 /* Save Files */
                 if (SendDlgItemMessage(dlg,CHK_ZDL,BM_GETCHECK,0,0)) {
                     if (!cfg.assoc[0]) { /* Set the value */
@@ -83,12 +93,12 @@ INT_PTR CALLBACK AssocProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp){
                     }
                 }
                 EndDialog(dlg, 0);
-            } else if(LOWORD(wp)==IDCANCEL) {
+            } else if (LOWORD(wp) == IDCANCEL) {
                 EndDialog(dlg, 0);
             }break;
-    } break;
+        } break;
     }
-    
+
     return 0;
 }
 
@@ -97,7 +107,7 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
     ITEM **item=0;
     switch(msg){
     case WM_INITDIALOG: {
-        item=(arg1==LST_PORT)?(port):(iwad);
+        item = arg1 == LST_PORT ? port : iwad;
         if(arg2!=-1){ /* Only set the text in the editboxes if it's not for a new entry */
             SendMessage(dlg,WM_SETTEXT,0,(arg1==LST_PORT)?((LPARAM)TEXT("Edit Port")):((LPARAM)TEXT("Edit IWAD")));
             SendDlgItemMessage(dlg,EDT_NAME,WM_SETTEXT,0,(LPARAM)item[arg2]->name);
@@ -106,8 +116,8 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         SendDlgItemMessage(dlg,EDT_NAME,EM_LIMITTEXT,MAX_NAME,0);
         SendDlgItemMessage(dlg,EDT_PATH,EM_LIMITTEXT,MAX_PATH,0);
     }break;
-    case WM_COMMAND:
-        switch(HIWORD(wp)) {
+
+    case WM_COMMAND: switch(HIWORD(wp)) {
         case BN_CLICKED:
             switch(LOWORD(wp)) {
             case BTN_BROWSE: { /* Set up the path */
@@ -120,22 +130,23 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 ofn.lStructSize = sizeof(OPENFILENAME);
                 ofn.hwndOwner = dlg;
                 ofn.hInstance = GetModuleHandle(NULL);
-                ofn.lpstrFile   = tmpfn;
-                ofn.nMaxFile  = MAX_PATH;
+                ofn.lpstrFile = tmpfn;
+                ofn.nMaxFile  = countof(tmpfn);
                 ofn.Flags = OFN_FILEMUSTEXIST|OFN_EXPLORER;
-                ofn.lpstrFilter = arg1==LST_PORT? TEXT("Executable Files (*.exe)\0*.exe"): TEXT("IWAD Files (*.wad)\0*.wad");
-                ofn.lpstrDefExt = arg1==LST_PORT? TEXT("exe"): TEXT("wad");
-                ofn.lpstrTitle  = arg1==LST_PORT? TEXT("Browse for Port Executable"): TEXT("Browse for IWAD");
+                ofn.lpstrFilter = arg1 == LST_PORT? TEXT("Executable Files (*.exe)\0*.exe"): TEXT("IWAD Files (*.wad)\0*.wad");
+                ofn.lpstrDefExt = arg1 == LST_PORT? TEXT("exe"): TEXT("wad");
+                ofn.lpstrTitle  = arg1 == LST_PORT? TEXT("Browse for Port Executable"): TEXT("Browse for IWAD");
                 /* Get the file and set the editbox */
-                if (GetOpenFileName(&ofn)) {
+                if (GetOpenFileNameCompat(&ofn)) {
                     SendDlgItemMessage(dlg, EDT_PATH, WM_SETTEXT, 0, (LPARAM)ofn.lpstrFile);
                 }
             }break;
+
             case IDOK: /* Save the changes */
-                item=(arg1==LST_PORT)?(port):(iwad);
-                if(!SendDlgItemMessage(dlg,EDT_NAME,WM_GETTEXTLENGTH,0,0)){MessageBox(dlg,TEXT("You must type a name."),TEXT("Error"),MB_OK|MB_ICONINFORMATION);break;}
-                if(!SendDlgItemMessage(dlg,EDT_PATH,WM_GETTEXTLENGTH,0,0)){MessageBox(dlg,TEXT("You must type a path."),TEXT("Error"),MB_OK|MB_ICONINFORMATION);break;}
-                if(arg2==-1){ /* If you are making a new item */
+                item = arg1 == LST_PORT ? port : iwad;
+                if (!SendDlgItemMessage(dlg, EDT_NAME, WM_GETTEXTLENGTH, 0, 0)) { MessageBox(dlg, TEXT("You must type a name."), TEXT("Error"), MB_OK|MB_ICONINFORMATION); break; }
+                if (!SendDlgItemMessage(dlg, EDT_PATH, WM_GETTEXTLENGTH, 0, 0)) { MessageBox(dlg, TEXT("You must type a path."), TEXT("Error"), MB_OK|MB_ICONINFORMATION); break; }
+                if (arg2==-1) { /* If you are making a new item */
                     item[arg3] = calloc(sizeof(ITEM), 1);
                 } else {
                     arg3=arg2;
@@ -143,10 +154,11 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 SendDlgItemMessage(dlg, EDT_NAME, WM_GETTEXT, MAX_NAME, (LPARAM)item[arg3]->name);
                 SendDlgItemMessage(dlg, EDT_PATH, WM_GETTEXT, MAX_PATH, (LPARAM)item[arg3]->path);
                 item[arg3]->avail = FileExists(item[arg3]->path);
-                arg1=arg2=arg3=0; /* Reset the temp vars */
+                arg1 = arg2 = arg3 = 0; /* Reset the temp vars */
                 /* Fall through */
+
             case IDCANCEL:
-                EndDialog(dlg,0);break;
+                EndDialog(dlg, 0);break;
             }break;
         }break;
     }
