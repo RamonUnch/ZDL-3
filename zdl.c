@@ -45,31 +45,66 @@ wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__re
     *d = '\0'; /* ensure result is NULL terminated */
     return d;
 }
-
+enum { OLD_OPENFILENAME_SIZE = 19 * 4 };
 BOOL GetOpenFileNameCompat(OPENFILENAME *ofn)
 {
-    BOOL ret;
-    ret = GetOpenFileName(ofn);
 #ifndef _WIN64
-    if (!ret && CommDlgExtendedError() == CDERR_STRUCTSIZE) {
-        ofn->lStructSize = 19 * 4; /* Old Win9x / NT4 size */
+    /* Always start with Old struct  size in 32 bit mode */
+    ofn->lStructSize = OLD_OPENFILENAME_SIZE;
+
+    /* For NT3.x / Win32s */
+    if ((BYTE)GetVersion() < 4) {
+        BOOL ret;
+        ofn->Flags &= ~OFN_EXPLORER;
         ret = GetOpenFileName(ofn);
+
+        /* With the old style dialog we get space separated values */
+        /* convert it to NULL separated with double NULL end */
+        if (ret && ofn->Flags & OFN_ALLOWMULTISELECT) {
+            TCHAR *p = ofn->lpstrFile + ofn->nFileOffset;
+            int len = ofn->nMaxFile - ofn->nFileOffset - 1; /* Remaining len */
+            if (len < 0)
+                return ret; /* insuficient remaining length */
+            while (--len > 0 && *p) {
+                if (*p == TEXT(' ')) *p = '\0';
+                ++p;
+                if (*p == TEXT('\0'))
+                    break;
+            }
+            *p++ = TEXT('\0');
+            *p = TEXT('\0'); /* Ensure double NULL END */
+        }
+        return ret;
     }
 #endif
-    return ret;
+    /* Modern mode */
+    return GetOpenFileName(ofn);
 }
 BOOL GetSaveFileNameCompat(OPENFILENAME *ofn)
 {
-    BOOL ret;
-    ret = GetSaveFileName(ofn);
 #ifndef _WIN64
-    if (!ret && CommDlgExtendedError() == CDERR_STRUCTSIZE) {
-        ofn->lStructSize = 19 * 4; /* Old Win9x / NT4 size */
-        ret = GetSaveFileName(ofn);
+    /* Always start with Old struct  size in 32 bit mode */
+    ofn->lStructSize = OLD_OPENFILENAME_SIZE;
+    /* For NT3.x / Win32s */
+    if ((BYTE)GetVersion() < 4) {
+        ofn->Flags &= ~OFN_EXPLORER;
     }
 #endif
-    return ret;
+    return GetOpenFileName(ofn);
 }
+
+/* Helper to be able to enable/disable dialog items
+ * easily while ensuring we move keyboard focus to
+ * the next control if it was selected */
+static BOOL EnableDlgItem(HWND hdlg, UINT id, BOOL enable)
+{
+    HWND hwndControl = GetDlgItem(hdlg, id);
+    if (!enable && hwndControl == GetFocus()) {
+        SendMessage(hdlg, WM_NEXTDLGCTL, 0, FALSE);
+    }
+    return EnableWindow(hwndControl, enable);
+}
+
 
 /* Global data */
 CFG cfg={0};
@@ -127,17 +162,27 @@ static void OnMoveUpOrDown(HWND dlg, int list_id, BOOL up)
     }
 }
 
+static void SetIconButton(HMODULE hm, HWND dlg, WORD bt_id, WORD icon_id)
+{
+    HWND item = GetDlgItem(dlg, bt_id);
+    UINT_PTR ostyle = GetWindowLongPtr(item, GWL_STYLE);
+    SetWindowLongPtr(item, GWL_STYLE, ostyle| BS_ICON);
+    SendMessage(item, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(icon_id)));
+}
+
 INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
 {
     int i=0, q=0;
     switch(msg) {
     case WM_INITDIALOG:{
         /* Set icons */
-        HMODULE hm = GetModuleHandle(NULL);
-        SendDlgItemMessage(dlg,BTN_UP,  BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
-        SendDlgItemMessage(dlg,BTN_DWN, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
-        SendDlgItemMessage(dlg,BTN_IUP, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
-        SendDlgItemMessage(dlg,BTN_IDWN,BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
+        if ((BYTE)GetVersion() >= 4) {
+            HMODULE hm = GetModuleHandle(NULL);
+            SetIconButton(hm, dlg, BTN_UP,   ICO_UP);
+            SetIconButton(hm, dlg, BTN_DWN,  ICO_DOWN);
+            SetIconButton(hm, dlg, BTN_IUP,  ICO_UP);
+            SetIconButton(hm, dlg, BTN_IDWN, ICO_DOWN);
+        }
 
         /* Set text limits */
         SendDlgItemMessage(dlg, EDT_EXTRA, EM_LIMITTEXT, countof(cfg.always), 0);
@@ -252,10 +297,21 @@ static void OnDeletePWAD(HWND dlg)
     }
 }
 
+static void Enable_Disable_GameMode(HWND dlg)
+{
+    int game_mode = SendDlgItemMessage(dlg, LST_GAME, CB_GETCURSEL, 0, 0);
+    int players_nb = SendDlgItemMessage(dlg, LST_PLAYERS, CB_GETCURSEL, 0, 0);
+    EnableDlgItem(dlg, EDT_HOST,    game_mode > 0);
+    EnableDlgItem(dlg, LST_PLAYERS, game_mode > 0);
+
+    EnableDlgItem(dlg, EDT_FRAGS,   game_mode > 0 && players_nb > 0);
+    EnableDlgItem(dlg, EDT_DMF,     game_mode > 0 && players_nb > 0);
+    EnableDlgItem(dlg, EDT_DMF2,    game_mode > 0 && players_nb > 0);
+}
+
 INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
 {
     int i=0,q=0,r=0,m=0;
-    RECT rct;
 
     switch (msg) {
     case WM_INITDIALOG: {
@@ -264,8 +320,10 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         HMODULE hm = GetModuleHandle(NULL);
         SendMessage(dlg, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_ICON)));
         SendMessage(dlg, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_ICON)));
-        SendDlgItemMessage(dlg, BTN_UP,  BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_UP)));
-        SendDlgItemMessage(dlg, BTN_DWN, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(ICO_DOWN)));
+        if ((BYTE)GetVersion() >= 4) {
+            SetIconButton(hm, dlg, BTN_UP,   ICO_UP);
+            SetIconButton(hm, dlg, BTN_DWN,  ICO_DOWN);
+        }
 
         /* Insert list data */
         { /* SKILL */
@@ -320,11 +378,11 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         /* Load the last configuration */
         if (Cfg_GetSel(0, port) == -1 || Cfg_GetSel(0, iwad) == -1) {
             MessageBox(dlg, STR_NOITEMS, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
-            break;
+            goto init_dialog_end;
         }
         if (!cmdline || !cmdline[0]) {
             Cfg_ReadSave(dlg, cfg.ini);
-            break;
+            goto init_dialog_end;
         }
 
         /* Process the command-line stuff */
@@ -357,6 +415,9 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
             }
         }
         }
+        init_dialog_end:
+        Enable_Disable_GameMode(dlg);
+
     }break;
 
     case WM_COMMAND:switch(HIWORD(wp)){
@@ -365,12 +426,15 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
             case LST_PWAD:MessageBox(dlg,pwad[SendDlgItemMessage(dlg,LST_PWAD,LB_GETCURSEL,0,0)],TEXT("File Info"),MB_OK|MB_ICONINFORMATION);break;
             case LST_IWAD:MessageBox(dlg,iwad[Cfg_GetSel(SendDlgItemMessage(dlg,LST_IWAD,LB_GETCURSEL,0,0),iwad)]->path,TEXT("File Info"),MB_OK|MB_ICONINFORMATION);break;
         }break;
-        /* IWAD List */
-        case LBN_SELCHANGE:
-           if(LOWORD(wp)==LST_IWAD) {
-               Dlg_PopulateWarp(dlg, iwad[Cfg_GetSel(SendDlgItemMessage(dlg, LST_IWAD, LB_GETCURSEL, 0, 0), iwad)]->path);
-           }
-        break;
+        case LBN_SELCHANGE: { /* == to CBN_SELCHANGE */
+            if(LOWORD(wp)==LST_IWAD) {
+                /* IWAD List */
+                Dlg_PopulateWarp(dlg, iwad[Cfg_GetSel(SendDlgItemMessage(dlg, LST_IWAD, LB_GETCURSEL, 0, 0), iwad)]->path);
+            } else if (LOWORD(wp)==LST_GAME || LOWORD(wp)==LST_PLAYERS) {
+                /* Game Mode or player count changed */
+                Enable_Disable_GameMode(dlg);
+            }
+        }break;
         /* Buttons */
         case BN_CLICKED:switch(LOWORD(wp)){
             case BTN_LAUNCH:Dlg_Launch(dlg,0);break;
@@ -391,7 +455,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 ofn.hwndOwner = dlg;
                 ofn.hInstance = GetModuleHandle(NULL);
                 ofn.lpstrFile = tmpfn;
-                ofn.nMaxFile  = MAX_PATH;
+                ofn.nMaxFile  = countof(tmpfn);
                 ofn.lpstrFilter=TEXT("ZDL Save Files (*.zdl,*.ini)\0*.zdl;*.ini\0All Files (*.*)\0*.*\0");
                 ofn.lpstrDefExt=TEXT("zdl");
                 ofn.Flags = LOWORD(wp)==MNU_SAVE? OFN_EXPLORER: OFN_FILEMUSTEXIST|OFN_EXPLORER;
@@ -409,15 +473,16 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
             case MNU_CLEAR:Dlg_ClearAll(dlg);break;
             case MNU_PWAD:Dlg_ClearPWAD(dlg);break;
             /* Open and close the multiplay panel */
-              case BTN_PANEL:
+              /*case BTN_PANEL: {
+                  RECT rct;
                   rct.top=0;rct.left=0;rct.right=270;rct.bottom=(cfg.dlgmode)?(282):(210);
                   cfg.dlgmode=(cfg.dlgmode)?(0):(1);
                   AdjustWindowRect(&rct,WS_POPUP|WS_CAPTION,0);
                   SetWindowPos(dlg,0,0,0,rct.right-rct.left,rct.bottom-rct.top,SWP_NOMOVE|SWP_NOZORDER);
                   SendDlgItemMessage(dlg,BTN_PANEL,BM_SETIMAGE,IMAGE_ICON,(LPARAM)LoadIcon(GetModuleHandle(NULL),MAKEINTRESOURCE((cfg.dlgmode)?(ICO_DOWN):(ICO_UP))));
-              break;
+              } break;*/
             case BTN_ADD: {
-                TCHAR tmpfn[MAX_PATH];
+                TCHAR tmpfn[MAX_PATH*3+1];
                 OPENFILENAME ofn;
                 if(pwad[MAX_PWAD-1]) { MessageBox(dlg,TEXT("Too many PWADs loaded!"),TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION); break; }
                 memset(tmpfn, 0, sizeof(tmpfn));
@@ -431,13 +496,13 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 ofn.lpstrDefExt=TEXT("wad");
                 /* Get the file and set the editbox */
                 ofn.lpstrFile = tmpfn;
-                ofn.nMaxFile  = MAX_PATH;
-                if(!GetOpenFileNameCompat(&ofn)){break;}
-                i=SendDlgItemMessage(dlg,LST_PWAD,LB_GETCOUNT,0,0);
-                if(!ofn.nFileExtension){ /* Multiple files */
-                    TCHAR *tmp, tmp2[MAX_PATH*2];
-                    memset(tmp2 ,0 , sizeof(tmp2));
-                    tmp=ofn.lpstrFile+ofn.nFileOffset;
+                ofn.nMaxFile  = countof(tmpfn);
+                if (!GetOpenFileNameCompat(&ofn)){break;}
+                i = SendDlgItemMessage(dlg,LST_PWAD,LB_GETCOUNT,0,0);
+                if (!ofn.nFileExtension) { /* Multiple files */
+                    TCHAR *tmp, tmp2[MAX_PATH*3+1];
+                    memset(tmp2, 0, sizeof(tmp2));
+                    tmp = ofn.lpstrFile + ofn.nFileOffset;
                     for( ;i<MAX_PWAD&&tmp[0];i++){
                         wsprintf(tmp2, TEXT("%s\\%s"),ofn.lpstrFile,tmp);
                         if(!Dlg_AddPWAD(dlg,tmp2)){i--;}
@@ -505,13 +570,17 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         }break;
     }break;
 
-    case WM_DROPFILES: { /* Add files dropped onto the pwad box */
+    case WM_DROPFILES: {
+        /* Add files dropped onto the pwad box */
         TCHAR tmp2[MAX_PATH];
-        r=DragQueryFile((HDROP)wp,0xFFFFFFFF,0,0);
-        for(i=SendMessage(GetDlgItem(dlg,LST_PWAD),LB_GETCOUNT,0,0);q<r;i++) {
-            if(i>=MAX_PWAD){MessageBox(dlg,STR_MAXPWAD,TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION);break;}
-            DragQueryFile((HDROP)wp,q,tmp2,MAX_PATH);
-            if(!Dlg_AddPWAD(dlg,tmp2)) i--;
+        r = DragQueryFile((HDROP)wp, 0xFFFFFFFF, 0, 0);
+        for (i = SendMessage(GetDlgItem(dlg,LST_PWAD), LB_GETCOUNT, 0, 0); q < r; i++) {
+            if (i >= MAX_PWAD) {
+                MessageBox(dlg, STR_MAXPWAD, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
+                break;
+            }
+            DragQueryFile((HDROP)wp, q, tmp2, countof(tmp2));
+            if (!Dlg_AddPWAD(dlg, tmp2)) i--;
             q++;
         }
         DragFinish((HDROP)wp);

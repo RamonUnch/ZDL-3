@@ -236,10 +236,11 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
         }
     }
     /* Dialog Mode */
-    if (ReadINI(TEXT("zdl.save"), TEXT("dlgmode"), tmp, MAX_PATH, file) > 0
+    /*ReadINI(TEXT("zdl.save"), TEXT("dlgmode"), tmp, MAX_PATH, file)
+    if ( > 0
     && !lstrcmpi(tmp,TEXT("open")) && cfg.dlgmode) {
         SendMessage(dlg, WM_COMMAND, MAKELONG(BTN_PANEL, BN_CLICKED), 0);
-    }
+    }*/
     /* PWAD list */
     for(i=0; i < MAX_PWAD ;i++) {
         wsprintf(tmp2, TEXT("file%d"), i);
