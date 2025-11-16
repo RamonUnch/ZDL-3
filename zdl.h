@@ -110,7 +110,7 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file);
 	/* Buttons */
 	/*#define BTN_EXIT 1010*/
 	#define BTN_ZDL 1011
-	#define BTN_PANEL 1012
+	/*#define BTN_PANEL 1012*/
 	#define BTN_LAUNCH 1013
 	/* Multiplay panel */
 	#define LST_GAME 1014

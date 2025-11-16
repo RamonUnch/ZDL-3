@@ -57,7 +57,7 @@ INT_PTR CALLBACK AssocProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp){
                         SHDeleteKey(HKEY_CLASSES_ROOT,TEXT("ZDL.SaveFile"));
                     }
                 }
-                if (SendDlgItemMessage(dlg,CHK_WAD,BM_GETCHECK,0,0)) {
+                if (SendDlgItemMessage(dlg, CHK_WAD, BM_GETCHECK, 0, 0)) {
                     if (!cfg.assoc[1]) { /* Set the value */
                         RegisterFileType(TEXT(".wad"),TEXT("ZDL.WADFile"),TEXT("Doom Engine Data File"), g_pgmptr,TEXT("\"%1\""), 2);
                     } else { /* Delete keys */
@@ -65,7 +65,7 @@ INT_PTR CALLBACK AssocProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp){
                         SHDeleteKey(HKEY_CLASSES_ROOT,TEXT("ZDL.WADFile"));
                     }
                 }
-                if (SendDlgItemMessage(dlg,CHK_DEH,BM_GETCHECK,0,0)) {
+                if (SendDlgItemMessage(dlg, CHK_DEH, BM_GETCHECK, 0, 0)) {
                     if (!cfg.assoc[2]) { /* Set the value */
                         RegisterFileType(TEXT(".deh"),TEXT("ZDL.PatchFile"),TEXT("DeHackEd Patch"),g_pgmptr,TEXT("\"%1\""),3);
                         RegisterFileType(TEXT(".bex"),TEXT("ZDL.PatchFile"),TEXT("DeHackEd Patch"),g_pgmptr,TEXT("\"%1\""),3);
@@ -76,15 +76,15 @@ INT_PTR CALLBACK AssocProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp){
                     }
 
                 }
-                if (SendDlgItemMessage(dlg, CHK_PK3,BM_GETCHECK,0,0)) {
+                if (SendDlgItemMessage(dlg, CHK_PK3, BM_GETCHECK, 0, 0)) {
                     if (!cfg.assoc[3]) { /* Set the value */
-                        RegisterFileType(TEXT(".pk3"),TEXT("ZDL.PK3File"),TEXT("Doom Engine Data File"),g_pgmptr,TEXT("\"%1\""),2);
+                        RegisterFileType(TEXT(".pk3"), TEXT("ZDL.PK3File"), TEXT("Doom Engine Data File"), g_pgmptr, TEXT("\"%1\""), 2);
                     } else { /* Delete keys */
-                        RegDeleteKey(HKEY_CLASSES_ROOT,TEXT(".pk3"));
-                        SHDeleteKey(HKEY_CLASSES_ROOT,TEXT("ZDL.PK3File"));
+                        RegDeleteKey(HKEY_CLASSES_ROOT, TEXT(".pk3"));
+                        SHDeleteKey(HKEY_CLASSES_ROOT, TEXT("ZDL.PK3File"));
                     }
                 }
-                if (SendDlgItemMessage(dlg,CHK_ZIP,BM_GETCHECK,0,0)) {
+                if (SendDlgItemMessage(dlg, CHK_ZIP, BM_GETCHECK, 0, 0)) {
                     if (!cfg.assoc[4]) { /* Set the value */
                         RegisterFileType(TEXT(".zip"),TEXT("ZDL.ZipFile"),TEXT("Doom Engine Data File"),g_pgmptr,TEXT("\"%1\""),2);
                     } else { /* Delete keys */
@@ -108,13 +108,15 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
     switch(msg){
     case WM_INITDIALOG: {
         item = arg1 == LST_PORT ? port : iwad;
-        if(arg2!=-1){ /* Only set the text in the editboxes if it's not for a new entry */
-            SendMessage(dlg,WM_SETTEXT,0,(arg1==LST_PORT)?((LPARAM)TEXT("Edit Port")):((LPARAM)TEXT("Edit IWAD")));
-            SendDlgItemMessage(dlg,EDT_NAME,WM_SETTEXT,0,(LPARAM)item[arg2]->name);
-            SendDlgItemMessage(dlg,EDT_PATH,WM_SETTEXT,0,(LPARAM)item[arg2]->path);
-        }else{SendMessage(dlg,WM_SETTEXT,0,(arg1==LST_PORT)?((LPARAM)TEXT("New Port")):((LPARAM)TEXT("New IWAD")));}
-        SendDlgItemMessage(dlg,EDT_NAME,EM_LIMITTEXT,MAX_NAME,0);
-        SendDlgItemMessage(dlg,EDT_PATH,EM_LIMITTEXT,MAX_PATH,0);
+        if (arg2!=-1) { /* Only set the text in the editboxes if it's not for a new entry */
+            SendMessage(dlg, WM_SETTEXT, 0, (arg1==LST_PORT) ?((LPARAM)TEXT("Edit Port")): ((LPARAM)TEXT("Edit IWAD")));
+            SendDlgItemMessage(dlg, EDT_NAME, WM_SETTEXT, 0, (LPARAM)item[arg2]->name);
+            SendDlgItemMessage(dlg, EDT_PATH, WM_SETTEXT, 0, (LPARAM)item[arg2]->path);
+        } else {
+            SendMessage(dlg, WM_SETTEXT,0,(arg1==LST_PORT)?((LPARAM)TEXT("New Port")):((LPARAM)TEXT("New IWAD")));
+        }
+        SendDlgItemMessage(dlg, EDT_NAME, EM_LIMITTEXT, MAX_NAME, 0);
+        SendDlgItemMessage(dlg, EDT_PATH, EM_LIMITTEXT, MAX_PATH, 0);
     }break;
 
     case WM_COMMAND: switch(HIWORD(wp)) {
@@ -127,7 +129,7 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 memset(tmpfn, 0, sizeof(tmpfn));
                 memset(&ofn, 0, sizeof(ofn));
 
-                ofn.lStructSize = sizeof(OPENFILENAME);
+                ofn.lStructSize = sizeof(ofn);
                 ofn.hwndOwner = dlg;
                 ofn.hInstance = GetModuleHandle(NULL);
                 ofn.lpstrFile = tmpfn;
