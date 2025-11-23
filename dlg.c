@@ -145,35 +145,35 @@ void Dlg_Launch(HWND dlg, char prompt)
     }
 
     /* Extra Args */
-    if(SendDlgItemMessage(dlg, EDT_EXTRA,WM_GETTEXTLENGTH,0,0)){
+    if (SendDlgItemMessage(dlg, EDT_EXTRA, WM_GETTEXTLENGTH, 0, 0)) {
         lstrcat_s(cmd, cmdlen, TEXT(" "));
         SendDlgItemMessage(dlg,EDT_EXTRA,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
     }
     /* Network stuff */
-    if(SendDlgItemMessage(dlg,LST_GAME,CB_GETCURSEL,0,0)){
-        if((i=SendDlgItemMessage(dlg,LST_PLAYERS,CB_GETCURSEL,0,0))){ /* Hosting */
+    if (SendDlgItemMessage(dlg,LST_GAME,CB_GETCURSEL,0,0)) {
+        if ((i = SendDlgItemMessage(dlg, LST_PLAYERS, CB_GETCURSEL, 0, 0))) { /* Hosting */
             wsprintf(&cmd[lstrlen(cmd)], TEXT(" -host %d"),i);
             /* Deathmatch Flag */
-            if(SendDlgItemMessage(dlg,LST_GAME,CB_GETCURSEL,0,0)==2){
+            if (SendDlgItemMessage(dlg, LST_GAME, CB_GETCURSEL, 0, 0) == 2) {
                 lstrcat_s(cmd, cmdlen, TEXT(" -deathmatch"));
                 /* Fragimit */
-                if(SendDlgItemMessage(dlg,EDT_FRAGS,WM_GETTEXTLENGTH,0,0)){
+                if (SendDlgItemMessage(dlg, EDT_FRAGS, WM_GETTEXTLENGTH, 0, 0)) {
                     lstrcat_s(cmd, cmdlen, TEXT(" +fraglimit "));
-                    SendDlgItemMessage(dlg,EDT_FRAGS,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
+                    SendDlgItemMessage(dlg, EDT_FRAGS, WM_GETTEXT, q-lstrlen(cmd), (LPARAM)&cmd[lstrlen(cmd)]);
                 }
             }
             /* DMF */
-            if(SendDlgItemMessage(dlg,EDT_DMF,WM_GETTEXTLENGTH,0,0)){
+            if (SendDlgItemMessage(dlg, EDT_DMF, WM_GETTEXTLENGTH, 0, 0)) {
                 lstrcat_s(cmd, cmdlen, TEXT(" +dmflags "));
-                SendDlgItemMessage(dlg,EDT_DMF,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
+                SendDlgItemMessage(dlg, EDT_DMF, WM_GETTEXT, q-lstrlen(cmd), (LPARAM)&cmd[lstrlen(cmd)]);
             }
             /* DMF2 */
-            if(SendDlgItemMessage(dlg,EDT_DMF2,WM_GETTEXTLENGTH,0,0)){
+            if (SendDlgItemMessage(dlg, EDT_DMF2, WM_GETTEXTLENGTH, 0, 0)) {
                 lstrcat_s(cmd, cmdlen, TEXT(" +dmflags2 "));
-                SendDlgItemMessage(dlg,EDT_DMF2,WM_GETTEXT,q-lstrlen(cmd),(LPARAM)&cmd[lstrlen(cmd)]);
+                SendDlgItemMessage(dlg, EDT_DMF2, WM_GETTEXT, q-lstrlen(cmd), (LPARAM)&cmd[lstrlen(cmd)]);
             }
-        }else{ /* Joining */
-            if(!SendDlgItemMessage(dlg,EDT_HOST,WM_GETTEXTLENGTH,0,0)) {
+        } else { /* Joining */
+            if (!SendDlgItemMessage(dlg, EDT_HOST, WM_GETTEXTLENGTH, 0, 0)) {
                 MessageBox(dlg, TEXT("You need to type a host to join"), TEXT("Error!"), MB_OK|MB_ICONHAND);
                 goto exit;
             }
@@ -181,7 +181,9 @@ void Dlg_Launch(HWND dlg, char prompt)
             SendDlgItemMessage(dlg, EDT_HOST,WM_GETTEXT, q-lstrlen(cmd), (LPARAM)&cmd[lstrlen(cmd)]);
         }
     }
-    if(prompt&&MessageBox(dlg,cmd,TEXT("Run this command-line?"),MB_YESNO|MB_DEFBUTTON2|MB_ICONQUESTION)==IDNO){goto exit;}
+    if (prompt && MessageBox(dlg,cmd,TEXT("Run this command-line?"), MB_YESNO|MB_DEFBUTTON2|MB_ICONQUESTION) == IDNO) {
+        goto exit;
+    }
 
     {/* Change to the port directory */
         TCHAR *end;
@@ -224,8 +226,8 @@ exit:
  *  Dlg_AddPWAD : Adds an item to the PWAD list  */
 int Dlg_AddPWAD(HWND dlg, const TCHAR *file)
 {
-    HWND ithwnd = GetDlgItem(dlg,LST_PWAD);
-    int i=SendMessage(ithwnd, LB_GETCOUNT, 0, 0);
+    HWND ithwnd = GetDlgItem(dlg, LST_PWAD);
+    int i = SendMessage(ithwnd, LB_GETCOUNT, 0, 0);
 
     if (i >= MAX_PWAD
     || !lstrrchr(file, TEXT('.'))
@@ -243,7 +245,8 @@ int Dlg_AddPWAD(HWND dlg, const TCHAR *file)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Dlg_ClearPWAD : Clears all the data from the PWAD list  */
-void Dlg_ClearPWAD(HWND dlg){
+void Dlg_ClearPWAD(HWND dlg)
+{
     int i=0;
     SendDlgItemMessage(dlg, LST_PWAD, LB_RESETCONTENT, 0, 0);
     for(i=0; i<MAX_PWAD && pwad[i]; i++) {
@@ -358,7 +361,7 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file)
         ok = ReadFile(fptr, &lump, sizeof(LUMPHEAD)*2, &read, NULL);
         if (!ok) break;
         if ( lump[1].name[0] == 'T' && !lstrcmpiA(lump[1].name, "THINGS")) {
-            lstrcpynA(temp, lump[0].name, 8);
+            lstrcpy_sA(temp, countof(temp), lump[0].name);
             SendMessageA(ithwnd, CB_ADDSTRING, 0, (LPARAM)temp);
         } else {
             SetFilePointer(fptr, sizeof(LUMPHEAD)-sizeof(LUMPHEAD)*2, 0, FILE_CURRENT);
