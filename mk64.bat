@@ -1,7 +1,7 @@
 @del *.o
-@del zdl.exe
+@del zdl64.exe
 
-set CFLAGS=-m64 -Os -std=gnu89 -DUNICODE -D_UNICODE -momit-leaf-frame-pointer -nostdlib -lkernel32 -luser32 -lshell32 -lmsvcrt -lcomdlg32 -ladvapi32 -lshlwapi -fno-stack-check -fno-stack-protector -mno-stack-arg-probe -e_MyMain -D__USE_MINGW_ANSI_STDIO=0 -Wall -flto -fno-ident -fno-exceptions  -fno-dwarf2-cfi-asm -fmerge-all-constants -Wstack-usage=4096 -Wno-unused-parameter
+set CFLAGS=-m64 -Os -std=c89 -DUNICODE -D_UNICODE -momit-leaf-frame-pointer -nostdlib -lkernel32 -luser32 -lshell32 -lcomdlg32 -ladvapi32 -fno-stack-check -fno-stack-protector -mno-stack-arg-probe -eMyMain -D__USE_MINGW_ANSI_STDIO=0 -Wall -flto -fno-ident -fno-exceptions  -fno-dwarf2-cfi-asm -fmerge-all-constants -Wstack-usage=4096 -Wno-unused-parameter
 
 windres zdl.rc -o rez.o -Fpe-x86-64
 

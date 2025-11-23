@@ -172,7 +172,7 @@ static void SetIconButton(HMODULE hm, HWND dlg, WORD bt_id, WORD icon_id)
 
 INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
 {
-    int i=0, q=0;
+    int i=0;
     switch(msg) {
     case WM_INITDIALOG:{
         /* Set icons */
@@ -208,15 +208,16 @@ INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
             case LST_IWAD: {
                 ITEM **item;
                 HWND ithwnd;
-                arg1 = q = LOWORD(wp);
+                int idc;
+                arg1 = idc = LOWORD(wp);
                 arg2 = i = (short)SendDlgItemMessage(dlg, LOWORD(wp), LB_GETCURSEL, 0, 0);
                 item = (LOWORD(wp)==LST_PORT)? (port): (iwad);
                 DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(DLG_FILE),dlg,FileProc);
                 /* Update the string in the listbox */
-                ithwnd = GetDlgItem(dlg,q);
-                SendMessage(ithwnd, LB_DELETESTRING,i,0);
-                SendMessage(ithwnd, LB_INSERTSTRING,i,(LPARAM)item[i]->name);
-                SendMessage(ithwnd, LB_SETCURSEL,q,0);
+                ithwnd = GetDlgItem(dlg, idc);
+                SendMessage(ithwnd, LB_DELETESTRING, i, 0);
+                SendMessage(ithwnd, LB_INSERTSTRING, i, (LPARAM)item[i]->name);
+                SendMessage(ithwnd, LB_SETCURSEL,  idc, 0);
                 /* Update the file's availabillity */
                 item[i]->avail = FileExists(item[i]->path);
                 arg1=arg2=0; /* Reset the temp vars */
@@ -230,10 +231,11 @@ INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
             case BTN_ADD:
             case BTN_IADD: {
                 HWND ithwnd;
+                int idc;
                 ITEM **item = (LOWORD(wp)==BTN_ADD)? (port): (iwad);
-                arg1 = q = (LOWORD(wp)==BTN_ADD)? (LST_PORT): (LST_IWAD);
+                arg1 = idc = (LOWORD(wp)==BTN_ADD)? (LST_PORT): (LST_IWAD);
                 arg2 = -1; /* -1 == BTN_ADD pressed */
-                ithwnd = GetDlgItem(dlg,q);
+                ithwnd = GetDlgItem(dlg, idc);
                 arg3 = i = (short)SendMessage(ithwnd, LB_GETCOUNT, 0, 0);
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_FILE), dlg, FileProc);
                 /* If a new entry was added, add it to the listbox */
@@ -311,7 +313,7 @@ static void Enable_Disable_GameMode(HWND dlg)
 
 INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
 {
-    int i=0,q=0,r=0,m=0;
+    int i=0;
 
     switch (msg) {
     case WM_INITDIALOG: {
@@ -388,13 +390,14 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         /* Process the command-line stuff */
         {
         TCHAR tmp[MAX_PATH];
+        int q = 0, r = 0, m = 0;
         for ( i = SendDlgItemMessage(dlg, LST_PWAD, LB_GETCOUNT, 0, 0); cmdline[q]; i++) {
             if (i >= MAX_PWAD) {
                 MessageBox(dlg, STR_MAXPWAD, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
                 break;
             }
             for ( ;cmdline[q]; q++) {
-                if (cmdline[q] == '\"') { m=(m)? (0): (1); continue; }
+                if (cmdline[q] == '\"') { m = (m)? (0): (1); continue; }
                 if (r < MAX_PATH){ tmp[r]=cmdline[q]; r++; }
                 if (cmdline[q]==' ' && !m) { q++; break; }
             }
@@ -573,6 +576,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
     case WM_DROPFILES: {
         /* Add files dropped onto the pwad box */
         TCHAR tmp2[MAX_PATH];
+        int q = 0, r;
         r = DragQueryFile((HDROP)wp, 0xFFFFFFFF, 0, 0);
         for (i = SendMessage(GetDlgItem(dlg,LST_PWAD), LB_GETCOUNT, 0, 0); q < r; i++) {
             if (i >= MAX_PWAD) {
@@ -603,9 +607,11 @@ int MyMain(void)
 TCHAR g_pgmptr[MAX_PATH];
 
 /* Avoid linking with msvcrt */
-size_t __cdecl strlen(const char *str) { return lstrlenA(str); }
+#ifdef _UNICODE
 size_t __cdecl wcslen(const wchar_t *str) { return lstrlenW(str); }
-
+#else
+size_t __cdecl strlen(const char *str) { return lstrlenA(str); }
+#endif
 /* Does not return NULL if it was unable to find the char! */
 TCHAR *lstrchr(const TCHAR *str, const TCHAR c)
 {
@@ -668,8 +674,9 @@ int MyMain(void)
 
     inst = GetModuleHandle(NULL);
 
-    /* Set up the INI string */
-    GetModuleFileName(NULL, g_pgmptr, MAX_PATH);
+    /* Set up the INI string.
+     * on some old windows GetModuleFileName may fail with NULL (Win32s v1.2) */
+    GetModuleFileName(inst, g_pgmptr, countof(g_pgmptr));
     lstrcpy_s(cfg.ini, countof(cfg.ini), g_pgmptr);
     lstrrchr(cfg.ini, TEXT('\\'))[1] = '\0';
     lstrcat_s(cfg.ini, countof(cfg.ini), TEXT("zdl.ini"));

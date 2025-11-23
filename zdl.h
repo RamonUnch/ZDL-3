@@ -179,6 +179,7 @@ void lstrcpy_sA(char *__restrict__ d, size_t N, const char *src);
 void lstrcpy_sW(wchar_t *__restrict__ d, size_t N, const wchar_t *src);
 char *lstrcat_sA(char *__restrict__ d, const size_t N, const char *__restrict__ s);
 wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__restrict__ s);
+
 #ifdef UNICODE
 # define lstrcpy_s lstrcpy_sW
 # define lstrcat_s lstrcat_sW
