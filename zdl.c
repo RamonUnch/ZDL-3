@@ -305,10 +305,15 @@ static void Enable_Disable_GameMode(HWND dlg)
     int players_nb = SendDlgItemMessage(dlg, LST_PLAYERS, CB_GETCURSEL, 0, 0);
     EnableDlgItem(dlg, EDT_HOST,    game_mode > 0);
     EnableDlgItem(dlg, LST_PLAYERS, game_mode > 0);
+    EnableDlgItem(dlg, LBL_HOST,    game_mode > 0);
+    EnableDlgItem(dlg, LBL_PLAYERS, game_mode > 0);
 
     EnableDlgItem(dlg, EDT_FRAGS,   game_mode > 0 && players_nb > 0);
     EnableDlgItem(dlg, EDT_DMF,     game_mode > 0 && players_nb > 0);
     EnableDlgItem(dlg, EDT_DMF2,    game_mode > 0 && players_nb > 0);
+    EnableDlgItem(dlg, LBL_FRAGS,   game_mode > 0 && players_nb > 0);
+    EnableDlgItem(dlg, LBL_DMF,     game_mode > 0 && players_nb > 0);
+    EnableDlgItem(dlg, LBL_DMF2,    game_mode > 0 && players_nb > 0);
 }
 
 INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)

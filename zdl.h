@@ -119,6 +119,12 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file);
 	#define EDT_FRAGS 1017
 	#define EDT_DMF 1018
 	#define EDT_DMF2 1019
+
+	#define LBL_HOST 1115
+	#define LBL_PLAYERS 1116
+	#define LBL_FRAGS 1117
+	#define LBL_DMF 1118
+	#define LBL_DMF2 1119
 /* Options Dialog */
 #define DLG_OPTIONS 101
 	/*#define EDT_EXTRA // used in DLG_MAIN */
