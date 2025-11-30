@@ -115,8 +115,8 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         } else {
             SendMessage(dlg, WM_SETTEXT,0,(arg1==LST_PORT)?((LPARAM)TEXT("New Port")):((LPARAM)TEXT("New IWAD")));
         }
-        SendDlgItemMessage(dlg, EDT_NAME, EM_LIMITTEXT, MAX_NAME, 0);
-        SendDlgItemMessage(dlg, EDT_PATH, EM_LIMITTEXT, MAX_PATH, 0);
+        SendDlgItemMessage(dlg, EDT_NAME, EM_LIMITTEXT, countof(item[arg2]->name), 0);
+        SendDlgItemMessage(dlg, EDT_PATH, EM_LIMITTEXT, countof(item[arg2]->path), 0);
     }break;
 
     case WM_COMMAND: switch(HIWORD(wp)) {
@@ -149,12 +149,12 @@ INT_PTR CALLBACK FileProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 if (!SendDlgItemMessage(dlg, EDT_NAME, WM_GETTEXTLENGTH, 0, 0)) { MessageBox(dlg, TEXT("You must type a name."), TEXT("Error"), MB_OK|MB_ICONINFORMATION); break; }
                 if (!SendDlgItemMessage(dlg, EDT_PATH, WM_GETTEXTLENGTH, 0, 0)) { MessageBox(dlg, TEXT("You must type a path."), TEXT("Error"), MB_OK|MB_ICONINFORMATION); break; }
                 if (arg2==-1) { /* If you are making a new item */
-                    item[arg3] = calloc(sizeof(ITEM), 1);
+                    item[arg3] = (ITEM *)calloc(sizeof(ITEM), 1);
                 } else {
                     arg3=arg2;
                 }
-                SendDlgItemMessage(dlg, EDT_NAME, WM_GETTEXT, MAX_NAME, (LPARAM)item[arg3]->name);
-                SendDlgItemMessage(dlg, EDT_PATH, WM_GETTEXT, MAX_PATH, (LPARAM)item[arg3]->path);
+                SendDlgItemMessage(dlg, EDT_NAME, WM_GETTEXT, countof(item[arg3]->name), (LPARAM)item[arg3]->name);
+                SendDlgItemMessage(dlg, EDT_PATH, WM_GETTEXT, countof(item[arg3]->path), (LPARAM)item[arg3]->path);
                 item[arg3]->avail = FileExists(item[arg3]->path);
                 arg1 = arg2 = arg3 = 0; /* Reset the temp vars */
                 /* Fall through */

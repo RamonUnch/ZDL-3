@@ -14,21 +14,21 @@
 **********************************************************************/
 #include "zdl.h"
 
-void lstrcpy_sA(char *__restrict__ dest, size_t N, const char *src)
+void lstrcpy_sA(char *MY_RESTRICT dest, size_t N, const char *src)
 {
     char *dmax=dest+N-1; /* keep space for a terminating NULL */
     for (; dest<dmax && (*dest=*src); ++src,++dest);  /* then append from src */
     *dest='\0'; /* ensure result is NULL terminated */
 }
 
-void lstrcpy_sW(wchar_t *__restrict__ dest, size_t N, const wchar_t *src)
+void lstrcpy_sW(wchar_t *MY_RESTRICT dest, size_t N, const wchar_t *src)
 {
     wchar_t *dmax=dest+N-1; /* keep space for a terminating NULL */
     for (; dest<dmax && (*dest=*src); ++src,++dest);  /* then append from src */
     *dest='\0'; /* ensure result is NULL terminated */
 }
 
-char *lstrcat_sA(char *__restrict__ d, const size_t N, const char *__restrict__ s)
+char *lstrcat_sA(char *MY_RESTRICT d, const size_t N, const char *MY_RESTRICT s)
 {
     const char *dmax = d + N - 1; /* keep space for a terminating NULL */
     for (; d<dmax &&  *d ; ++d);             /* go to end of dest */
@@ -37,7 +37,7 @@ char *lstrcat_sA(char *__restrict__ d, const size_t N, const char *__restrict__ 
     return d;
 }
 
-wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__restrict__ s)
+wchar_t *lstrcat_sW(wchar_t *MY_RESTRICT d, const size_t N, const wchar_t *MY_RESTRICT s)
 {
     const wchar_t *dmax = d + N - 1; /* keep space for a terminating NULL */
     for (; d<dmax &&  *d ; ++d);             /* go to end of dest */
@@ -166,7 +166,7 @@ static void SetIconButton(HMODULE hm, HWND dlg, WORD bt_id, WORD icon_id)
 {
     HWND item = GetDlgItem(dlg, bt_id);
     UINT_PTR ostyle = GetWindowLongPtr(item, GWL_STYLE);
-    SetWindowLongPtr(item, GWL_STYLE, ostyle| BS_ICON);
+    SetWindowLongPtr(item, GWL_STYLE, ostyle | BS_ICON);
     SendMessage(item, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hm, MAKEINTRESOURCE(icon_id)));
 }
 
@@ -185,7 +185,7 @@ INT_PTR CALLBACK ConfigProc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
         }
 
         /* Set text limits */
-        SendDlgItemMessage(dlg, EDT_EXTRA, EM_LIMITTEXT, countof(cfg.always), 0);
+        SendDlgItemMessage(dlg, EDT_EXTRA, EM_LIMITTEXT, countof(cfg.always)-1, 0);
 
         /* Fill the dialog with info */
         SendDlgItemMessage(dlg, EDT_EXTRA,    WM_SETTEXT, 0, (LPARAM)cfg.always);
@@ -395,7 +395,8 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         /* Process the command-line stuff */
         {
         TCHAR tmp[MAX_PATH];
-        int q = 0, r = 0, m = 0;
+        int q = 0, m = 0;
+        size_t r = 0;
         for ( i = SendDlgItemMessage(dlg, LST_PWAD, LB_GETCOUNT, 0, 0); cmdline[q]; i++) {
             if (i >= MAX_PWAD) {
                 MessageBox(dlg, STR_MAXPWAD, TEXT("Error!"), MB_OK|MB_ICONEXCLAMATION);
@@ -403,7 +404,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
             }
             for ( ;cmdline[q]; q++) {
                 if (cmdline[q] == '\"') { m = (m)? (0): (1); continue; }
-                if (r < MAX_PATH){ tmp[r]=cmdline[q]; r++; }
+                if (r < countof(tmp)) { tmp[r]=cmdline[q]; r++; }
                 if (cmdline[q]==' ' && !m) { q++; break; }
             }
             tmp[(cmdline[q])?(r-1):(r)] = '\0'; r = 0;
@@ -459,7 +460,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 memset(tmpfn, 0, sizeof(tmpfn));
                 memset(&ofn, 0, sizeof(ofn));
 
-                ofn.lStructSize = sizeof(OPENFILENAME);
+                ofn.lStructSize = sizeof(ofn);
                 ofn.hwndOwner = dlg;
                 ofn.hInstance = GetModuleHandle(NULL);
                 ofn.lpstrFile = tmpfn;
@@ -495,7 +496,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 if(pwad[MAX_PWAD-1]) { MessageBox(dlg,TEXT("Too many PWADs loaded!"),TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION); break; }
                 memset(tmpfn, 0, sizeof(tmpfn));
                 memset(&ofn, 0, sizeof(ofn));
-                ofn.lStructSize = sizeof(OPENFILENAME);
+                ofn.lStructSize = sizeof(ofn);
                 ofn.hwndOwner = dlg;
                 ofn.hInstance = GetModuleHandle(NULL);
                 ofn.lpstrFilter=TEXT("ZDoom Addon Files (*.wad,*.deh,*.bex,*.zip,*.pk3)\0*.wad;*.deh;*.bex;*.zip;*.pk3\0All Files (*.*)\0*.*\0");
