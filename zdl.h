@@ -21,6 +21,14 @@
 #define MAX_PWAD 64
 #define MAX_NAME 48
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define MY_RESTRICT restrict
+#endif
+
+#ifndef MY_RESTRICT
+#define MY_RESTRICT
+#endif
+
 /* * * * * * * * * * * * * * * * * * * * *
  * Strings                               */
 #define STR_MAXPWAD TEXT("Too many files loaded! Not all files were added to the list.")
@@ -35,7 +43,7 @@ typedef struct{ /* Options */
 	char launch;
 	char autoclose;
 	char padd___;
-	TCHAR always[128];
+	TCHAR always[256];
 	/* Internal */
 	TCHAR ini[MAX_PATH];
 	char assoc[8];
@@ -181,10 +189,10 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file);
 
 /* * * * * * * * * * * * * * * * * * * * *
  * */
-void lstrcpy_sA(char *__restrict__ d, size_t N, const char *src);
-void lstrcpy_sW(wchar_t *__restrict__ d, size_t N, const wchar_t *src);
-char *lstrcat_sA(char *__restrict__ d, const size_t N, const char *__restrict__ s);
-wchar_t *lstrcat_sW(wchar_t *__restrict__ d, const size_t N, const wchar_t *__restrict__ s);
+void lstrcpy_sA(char *MY_RESTRICT d, size_t N, const char *src);
+void lstrcpy_sW(wchar_t *MY_RESTRICT d, size_t N, const wchar_t *src);
+char *lstrcat_sA(char *MY_RESTRICT d, const size_t N, const char *MY_RESTRICT s);
+wchar_t *lstrcat_sW(wchar_t *MY_RESTRICT d, const size_t N, const wchar_t *MY_RESTRICT s);
 
 #ifdef UNICODE
 # define lstrcpy_s lstrcpy_sW

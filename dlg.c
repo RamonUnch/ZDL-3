@@ -31,7 +31,7 @@ void Dlg_Launch(HWND dlg, char prompt)
 
     /* Alloc the commend line string (up to 18KB) */
     cmdlen = q;
-    cmd = calloc(cmdlen, sizeof(TCHAR));
+    cmd = (TCHAR *)calloc(cmdlen, sizeof(TCHAR));
     if (!cmd) return;
     memset(tmp,0, sizeof(tmp));
     portExe = port[Cfg_GetSel(SendDlgItemMessage(dlg, LST_PORT, CB_GETCURSEL, 0, 0),port)]->path;
@@ -53,7 +53,7 @@ void Dlg_Launch(HWND dlg, char prompt)
 
     }
     /* Warp and Skill */
-    SendDlgItemMessage(dlg,LST_WARP,WM_GETTEXT,MAX_PATH,(LPARAM)tmp);
+    SendDlgItemMessage(dlg, LST_WARP, WM_GETTEXT, countof(tmp), (LPARAM)tmp);
     if (tmp[0]) {
         TCHAR mapnum[MAX_PATH], *p; /* In case it is a simple map number */
         int issimplenumber = 0;
@@ -236,7 +236,7 @@ int Dlg_AddPWAD(HWND dlg, const TCHAR *file)
         return 0;
     }
 
-    pwad[i] = calloc(MAX_PATH, sizeof(TCHAR));
+    pwad[i] = (TCHAR *)calloc(MAX_PATH, sizeof(TCHAR));
     lstrcpy_s(pwad[i], MAX_PATH, file);
     SendMessage(ithwnd, LB_ADDSTRING, 0, (LPARAM)GetFNinPath(file));
 
@@ -358,7 +358,7 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file)
     SetFilePointer(fptr, header.dir, 0, FILE_BEGIN);
 
     for (i=0; i < header.lumps; i++) {
-        ok = ReadFile(fptr, &lump, sizeof(LUMPHEAD)*2, &read, NULL);
+        ok = ReadFile(fptr, lump, sizeof(lump), &read, NULL);
         if (!ok) break;
         if ( lump[1].name[0] == 'T' && !lstrcmpiA(lump[1].name, "THINGS")) {
             lstrcpy_sA(temp, countof(temp), lump[0].name);

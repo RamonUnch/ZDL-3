@@ -67,8 +67,8 @@ void RegisterFileType(
     TCHAR *tmp,*tmp2;
 
     i = lstrlen(command) + lstrlen(exe) + MAX_PATH;
-    tmp = calloc(i, sizeof(TCHAR));
-    tmp2 = calloc(i, sizeof(TCHAR));
+    tmp = (TCHAR *)calloc(i, sizeof(*tmp));
+    tmp2 = (TCHAR *)calloc(i, sizeof(*tmp2));
     if (!tmp || !tmp2) goto fail;
 
     /* Delete the old extensions */
@@ -104,36 +104,36 @@ void Cfg_LoadConfig()
     TCHAR tmp[32]={0};
     ReadINI(TEXT("zdl.general"), TEXT("alwaysadd"), cfg.always, countof(cfg.always), cfg.ini);
 
-    ReadINI(TEXT("zdl.general"), TEXT("zdllaunch"), tmp,countof(tmp),cfg.ini);
+    ReadINI(TEXT("zdl.general"), TEXT("zdllaunch"), tmp, countof(tmp), cfg.ini);
     cfg.launch = tmp[0] == '1';
-    ReadINI(TEXT("zdl.general"), TEXT("autoclose"), tmp, sizeof(tmp), cfg.ini);
+    ReadINI(TEXT("zdl.general"), TEXT("autoclose"), tmp, countof(tmp), cfg.ini);
     cfg.autoclose = tmp[0]=='1';
 
     /* Load ports */
     for (i=0; i<MAX_ITEM; i++) {
-        port[i] = calloc(sizeof(ITEM), 1);
+        port[i] = (ITEM *)calloc(sizeof(ITEM), 1);
         wsprintf(tmp, TEXT("p%dn"),i);
-        if (!ReadINI(TEXT("zdl.ports"), tmp, port[i]->name, MAX_NAME, cfg.ini))
+        if (!ReadINI(TEXT("zdl.ports"), tmp, port[i]->name, countof(port[i]->name), cfg.ini))
             { free(port[i]); port[i]=0; break; }
         wsprintf(tmp, TEXT("p%df"), i);
-        if (!ReadINI(TEXT("zdl.ports"), tmp, port[i]->path, MAX_PATH, cfg.ini))
+        if (!ReadINI(TEXT("zdl.ports"), tmp, port[i]->path, countof(port[i]->path), cfg.ini))
             { free(port[i]); port[i]=0; break; }
 
         port[i]->avail = FileExists(port[i]->path);
     }
     /* Load IWADs */
-    iwad[0] = calloc(sizeof(ITEM), 1);
+    iwad[0] = (ITEM *)calloc(sizeof(ITEM), 1);
     lstrcpy_s(iwad[0]->name, MAX_NAME, TEXT("None/Auto"));
-    /*lstrcpy_s(iwad[0]->path, MAX_PATH, TEXT(""));*/
+    /*lstrcpy_s(iwad[0]->path, countof(iwad[i]->path), TEXT(""));*/
     iwad[0]->avail = 1;
 
     for (i=1; i<MAX_ITEM; i++) {
-        iwad[i] = calloc(sizeof(ITEM), 1);
+        iwad[i] = (ITEM *)calloc(sizeof(ITEM), 1);
         wsprintf(tmp, TEXT("i%dn"),i-1);
-        if(!ReadINI(TEXT("zdl.iwads"),tmp, iwad[i]->name, MAX_NAME, cfg.ini))
+        if(!ReadINI(TEXT("zdl.iwads"),tmp, iwad[i]->name, countof(iwad[i]->name), cfg.ini))
             {free(iwad[i]);iwad[i]=0;break;}
         wsprintf(tmp, TEXT("i%df"),i-1);
-        if(!ReadINI(TEXT("zdl.iwads"),tmp, iwad[i]->path, MAX_PATH, cfg.ini))
+        if(!ReadINI(TEXT("zdl.iwads"),tmp, iwad[i]->path, countof(iwad[i]->path), cfg.ini))
             {free(iwad[i]);iwad[i]=0;break;}
 
         /* MessageBox(NULL, iwad[i]->path, NULL, 0); */
@@ -197,13 +197,13 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
     memset(tmp, 0, sizeof(tmp));
     memset(tmp2, 0, sizeof(tmp2));
 /* Try to find [zdl.save] to see if this is a save file */
-    if(ReadINI(TEXT("zdl.save"),TEXT("keyb"),tmp,MAX_PATH,file)==-2){
+    if (ReadINI(TEXT("zdl.save"), TEXT("keyb"), tmp, countof(tmp), file) == -2) {
         MessageBox(dlg,TEXT("This save file is an invalid format."),TEXT("Error!"),MB_OK|MB_ICONEXCLAMATION);
         i=0;goto exit;
     }
 /* Start reading the saved data */
     /* Port */
-    if (ReadINI(TEXT("zdl.save"),TEXT("port"),tmp,MAX_PATH,file)) {
+    if (ReadINI(TEXT("zdl.save"), TEXT("port"), tmp, countof(tmp), file)) {
         if (!port[0] || (i=Cfg_GetSelStr(tmp,port))<0) {
             wsprintf(tmp2, STR_NEEDPRT,tmp,port[Cfg_GetSel(0,port)]->name);
             if(MessageBox(dlg,tmp2,TEXT("Port not found!"),MB_YESNO|MB_ICONQUESTION)==IDNO){i=0;goto exit;}
@@ -211,8 +211,8 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
         }
     }
     /* Iwad */
-    if (ReadINI(TEXT("zdl.save"),TEXT("iwad"),tmp,MAX_PATH,file)) {
-        if (!iwad[0] || (q=Cfg_GetSelStr(tmp,iwad))<0) {
+    if (ReadINI(TEXT("zdl.save"), TEXT("iwad"), tmp, countof(tmp), file)) {
+        if (!iwad[0] || (q=Cfg_GetSelStr(tmp,iwad)) < 0) {
             wsprintf(tmp2, STR_NEEDIWD,tmp,iwad[Cfg_GetSel(0,iwad)]->name);
             if(MessageBox(dlg,tmp2,TEXT("Load Failed!"),MB_YESNO|MB_ICONQUESTION)==IDNO){i=0;goto exit;}
             q=0;
@@ -224,19 +224,19 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
     Dlg_PopulateWarp(dlg,iwad[Cfg_GetSel(q,iwad)]->path);
 
     /* EditBoxes (Warp, Extra, Host, Frags, DMF, DMF2) */
-    for(i=0; i < 6; i++) {
-        if(ReadINI(TEXT("zdl.save"), boxEDT[i], tmp, MAX_PATH, file)>0) {
-            SendDlgItemMessage(dlg, boxidEDT[i], WM_SETTEXT,0,(LPARAM)tmp);
+    for (i=0; i < 6; i++) {
+        if(ReadINI(TEXT("zdl.save"), boxEDT[i], tmp, countof(tmp), file) > 0) {
+            SendDlgItemMessage(dlg, boxidEDT[i], WM_SETTEXT, 0, (LPARAM)tmp);
         }
     }
     /* ComboBoxes (Skill, GameType, Players) */
     for(i=0; i < 3; i++) {
-        if(ReadINI(TEXT("zdl.save"), boxLST[i], tmp, MAX_PATH, file) > 0) {
+        if(ReadINI(TEXT("zdl.save"), boxLST[i], tmp, countof(tmp), file) > 0) {
             SendDlgItemMessage(dlg, boxidLST[i], CB_SETCURSEL, (WPARAM)lstr2int(tmp), 0);
         }
     }
     /* Dialog Mode */
-    /*ReadINI(TEXT("zdl.save"), TEXT("dlgmode"), tmp, MAX_PATH, file)
+    /*ReadINI(TEXT("zdl.save"), TEXT("dlgmode"), tmp, countof(tmp), file)
     if ( > 0
     && !lstrcmpi(tmp,TEXT("open")) && cfg.dlgmode) {
         SendMessage(dlg, WM_COMMAND, MAKELONG(BTN_PANEL, BN_CLICKED), 0);
@@ -244,7 +244,7 @@ int Cfg_ReadSave(HWND dlg, const TCHAR *file)
     /* PWAD list */
     for(i=0; i < MAX_PWAD ;i++) {
         wsprintf(tmp2, TEXT("file%d"), i);
-        if (ReadINI(TEXT("zdl.save"),tmp2,tmp, MAX_PATH,file)>0) {
+        if (ReadINI(TEXT("zdl.save"),tmp2,tmp, countof(tmp), file) > 0) {
             if(!Dlg_AddPWAD(dlg,tmp)){i--;}
         } else {
             break;
@@ -289,7 +289,7 @@ void Cfg_WriteSave(HWND dlg, const TCHAR *inipath)
 
     WritePrivateProfileString(TEXT("zdl.save"), TEXT("dlgmode"), cfg.dlgmode? NULL: TEXT("open"), inipath);
 
-    SendDlgItemMessage(dlg, LST_WARP, WM_GETTEXT, MAX_PATH, (LPARAM)tmp);
+    SendDlgItemMessage(dlg, LST_WARP, WM_GETTEXT, countof(tmp), (LPARAM)tmp);
     WritePrivateProfileString(TEXT("zdl.save"), TEXT("warp"), tmp, inipath);
 
     wsprintf(tmp, TEXT("%d"), (int)SendDlgItemMessage(dlg, LST_SKILL, CB_GETCURSEL, 0, 0));
@@ -307,7 +307,7 @@ void Cfg_WriteSave(HWND dlg, const TCHAR *inipath)
     for (i=0; i < 5; i++) { /* Grab text from the boxes */
         HWND ithwnd = GetDlgItem(dlg, boxid[i]);
         tmp[0] = TEXT('\0');
-        SendMessage(ithwnd, WM_GETTEXT, MAX_PATH, (LPARAM)tmp);
+        SendMessage(ithwnd, WM_GETTEXT, countof(tmp), (LPARAM)tmp);
         WritePrivateProfileString(TEXT("zdl.save"), box[i], tmp, inipath);
     }
 /* PWADs */
