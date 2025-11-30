@@ -573,7 +573,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ABOUT), dlg, AboutProc);break;
             /* Ways to exit */
             case IDCANCEL:
-                SendMessage(dlg, WM_CLOSE,0,0); exit(0); break;
+                SendMessage(dlg, WM_CLOSE,0,0); break;
             case IDOK:
                 Dlg_Launch(dlg, 0); break;
         }break;
@@ -595,7 +595,7 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
         }
         DragFinish((HDROP)wp);
     }break;
-    case WM_CLOSE:Dlg_Quit(dlg,1); exit(0);break;
+    case WM_CLOSE:Dlg_Quit(dlg,1); break;
     }
 
     return 0;

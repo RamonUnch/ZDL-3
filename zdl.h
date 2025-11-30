@@ -184,7 +184,7 @@ void Dlg_PopulateWarp(HWND dlg, TCHAR *file);
  * */
 #define calloc(x,y) HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, (x)*(y) )
 #define free(x) HeapFree( GetProcessHeap(), 0, (x) )
-#define exit(x) ExitProcess( x )
+/* #define exit(x) ExitProcess( x ) */
 #define FileExists(fn) (GetFileAttributes(fn) != 0xFFFFFFFF)
 
 /* * * * * * * * * * * * * * * * * * * * *
