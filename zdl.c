@@ -601,23 +601,8 @@ INT_PTR CALLBACK MainProc(HWND dlg,UINT msg,WPARAM wp,LPARAM lp)
     return 0;
 }
 
-/*
-#ifdef _UNICODE
-#define __tgetmainargs __wgetmainargs
-#else
-#define __tgetmainargs __getmainargs
-#endif
-int WINAPI WinMain(HINSTANCE inst,HINSTANCE pinst,LPSTR cline,int cshow)
-int MyMain(void)
-*/
 TCHAR g_pgmptr[MAX_PATH];
 
-/* Avoid linking with msvcrt */
-#ifdef _UNICODE
-size_t __cdecl wcslen(const wchar_t *str) { return lstrlenW(str); }
-#else
-size_t __cdecl strlen(const char *str) { return lstrlenA(str); }
-#endif
 /* Does not return NULL if it was unable to find the char! */
 TCHAR *lstrchr(const TCHAR *str, const TCHAR c)
 {
@@ -651,6 +636,41 @@ TCHAR *GetFNinPath(const TCHAR *p)
     return (TCHAR*)&p[i]; /* first char of the filename */
 }
 
+#ifdef _UNICODE
+#define tWinMain wWinMain
+#else
+#define tWinMain WinMain
+#endif
+
+int WINAPI tWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, TCHAR *szCmdLine, int iCmdShow)
+{
+    /* Set up the INI string.
+     * on some old windows GetModuleFileName may fail with NULL (Win32s v1.2) */
+    GetModuleFileName(hInst, g_pgmptr, countof(g_pgmptr));
+    lstrcpy_s(cfg.ini, countof(cfg.ini), g_pgmptr);
+    lstrrchr(cfg.ini, TEXT('\\'))[1] = '\0';
+    lstrcat_s(cfg.ini, countof(cfg.ini), TEXT("zdl.ini"));
+
+    /* We need the command line for the INI thingy later */
+    cmdline = szCmdLine;
+
+    Cfg_LoadConfig(); /* Load the configuration file */
+
+    /* GoooOOooooOOOOOoooOOO! */
+    return DialogBox(hInst, MAKEINTRESOURCE(DLG_MAIN), HWND_DESKTOP, MainProc);
+}
+
+/* * * * * * * * * * * * * * * * * * *
+ * Section toavoid linking with CRT  */
+#ifdef SKIP_CRT
+
+/* Avoid linking with msvcrt */
+#ifdef _UNICODE
+size_t __cdecl wcslen(const wchar_t *str) { return lstrlenW(str); }
+#else
+size_t __cdecl strlen(const char *str) { return lstrlenA(str); }
+#endif
+
 static const TCHAR *ParamsFromCmdline(const TCHAR *cmdl)
 {
     /* (")(PATH\TO\)PROG().exe(")    COMMAND */
@@ -673,29 +693,21 @@ static const TCHAR *ParamsFromCmdline(const TCHAR *cmdl)
     return cmdl;
 }
 
+#ifdef _MSC_VER
+#pragma comment(linker, "/entry:\"MyMain\"")
+#endif
 int MyMain(void)
 {
-    HINSTANCE inst;
-    TCHAR *cmdl;
+    HINSTANCE hInst;
+    HINSTANCE hPrevInstance = NULL;
+    const TCHAR *szCmdLine;
+    int iCmdShow = 0;
 
-    inst = GetModuleHandle(NULL);
+    hInst = GetModuleHandle(NULL);
+    szCmdLine = ParamsFromCmdline(GetCommandLine());
 
-    /* Set up the INI string.
-     * on some old windows GetModuleFileName may fail with NULL (Win32s v1.2) */
-    GetModuleFileName(inst, g_pgmptr, countof(g_pgmptr));
-    lstrcpy_s(cfg.ini, countof(cfg.ini), g_pgmptr);
-    lstrrchr(cfg.ini, TEXT('\\'))[1] = '\0';
-    lstrcat_s(cfg.ini, countof(cfg.ini), TEXT("zdl.ini"));
-
-    /* We need the command line for the INI thingy later */
-    cmdline = NULL;
-    cmdl = GetCommandLine();
-    if (cmdl) {
-        cmdline = (TCHAR*)ParamsFromCmdline(cmdl);
-    }
-
-    Cfg_LoadConfig(); /* Load the configuration file */
-
-    /* GoooOOooooOOOOOoooOOO! */
-    return DialogBox(inst, MAKEINTRESOURCE(DLG_MAIN), HWND_DESKTOP, MainProc);
+    ExitProcess( tWinMain(hInst, hPrevInstance, (TCHAR *)szCmdLine, iCmdShow) );
+    return 0;
 }
+
+#endif
